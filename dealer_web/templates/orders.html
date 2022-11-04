@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+<!-- The button to open modal -->
+{% block content %}
+  <div class="mb-5 overflow-x-auto">
+    <table class="table w-full">          
+      <tr>
+      {% for k in th %}
+          <th>{{ k }}</th>      
+      {% endfor %}
+          <th colspan='2'>Operations</th>
+      </tr>
+      {% for tr in data %}
+      <tr>
+       {% for v in tr %}
+          <td>{{ v }}</td>
+        {% endfor %}
+        <td>
+        <label for="my-modal-4" class="btn btn-mod">MOD</label>
+        </td>
+        <td>
+          <button class="btn btn-cls">X</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+<div class="overflow-x-auto mb-5">
+ <table class="table w-full">
+    <tr>
+    {% for k in mh %}
+        <th>{{ k }}</th>      
+    {% endfor %}
+    </tr>
+    {% for tr in md %}
+    <tr>
+     {% for v in tr %}
+        <td>{{ v }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+  <!-- Put this part before </body> tag -->
+  <input type="checkbox" id="my-modal-4" class="modal-toggle" />
+  <label for="my-modal-4" class="modal cursor-pointer">
+  <label class="modal-box relative" for="">
+  <label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>            
+  <h1 id="title" class="text-lg font-bold">Congratulations random Internet user!</h1>
+  <form id='frm' method='post' action='/order_modify/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full">
+  <div class="btn-group">
+    <input type="radio" name="ptype" value="1" data-title="NRML" class="btn" checked />
+    <input type="radio" name="ptype" value="2" data-title="MIS" class="btn"  />
+    <input type="radio" name="ptype" value="3" data-title="CNC" class="btn" />
+  </div>
+  <div class="btn-group lg:float-right">
+    <input type="radio" name="otype" value="1" data-title="LMT" class="btn" checked />
+    <input type="radio" name="otype" value="2" data-title="MKT" class="btn"  />
+    <input type="radio" name="otype" value="3" data-title="SL" class="btn" />
+    <input type="radio" name="otype" value="4" data-title="SL-M" class="btn" />
+  </div>
+  <div class="form-control autocomplete relative inline-block w-full">
+    <label class="label">
+      <span class="label-text">LTP</span>
+    </label>
+    <input id="ltp" type="text" class="input input-ghost" readonly="readonly" />
+    <input id="symbol" name="symbol" type="hidden" class="input input-ghost" />
+    <input id="user_id" name="user_id" type="hidden" class="input input-ghost float-right" readonly="readonly" style="width:30%" />
+  </div>
+  <div class="form-control relative inline-block">
+    <label class="label">
+      <span class="label-text">Price</span>
+     <span class="label-text">Trigger Price</span>
+    </label>
+    <input type="text" id="price" name="price" class="input input-bordered" style="width:46%"/>
+    <input type="text" id="trigger" name="trigger" class="input input-bordered float-right" style="width:46%"/>
+  </div>
+    <div class="form-control">
+    <label class="label">
+      <span class="label-text">Qty</span>
+    </label>
+    <input type="text" id="qty" name="qty" class="input input-bordered" />
+  </div>
+  <div class="form-control">
+    <label class="label cursor-pointer">
+      <span class="label-text text-lg">SELL</span>
+      <input disabled id="txn" type="checkbox" name="txn" class="toggle toggle-lg bg-red-300 checked:bg-green-500"/>
+      <span class="label-text text-lg">BUY</span>
+    </label>
+      <input id="order_id" type='hidden' name="order_id" />
+      <input id="exchange" type='hidden' name="exchange" />
+      <input id="token" type='hidden' name="token" />
+  </div>
+  <input type="submit" class="btn btn-primary btn-outline btn-block" value="MODIFY"/>          
+</form>
+</label>
+</label>
+{% endblock content %}

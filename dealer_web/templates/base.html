@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{ title }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link href="./../static/main.css" rel="stylesheet">
+    {% if title=='new' %}
+    <style>
+    .autocomplete-items {
+    position: absolute;
+    border: 1px solid #570df8;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /*position the autocomplete items to be the same width as the container:*/
+    top: 100%;
+    left: 0;
+    right: 0;
+    }
+    .autocomplete-items div {
+      padding: 10px;
+      cursor: pointer;
+      background-color: #fff;
+      border-bottom: 1px solid #570df8;
+    }
+    .autocomplete-items div:hover {
+      /*when hovering an item:*/
+      background-color: #e9e9e9;
+    }
+    .autocomplete-active {
+      /*when navigating through the items using the arrow keys:*/
+      background-color:#570df8 !important;
+      color: #ffffff;
+
+    }
+    </style>
+    {% endif %}
+  </head>
+  <body>
+    <!-- navigation -->
+    <div class="navbar bg-indigo-300">
+      <div class="flex-none">
+        <ul class="menu menu-horizontal p-0">
+          {% for v in pages %}
+            <li><a 
+            {% if v == title %}
+                class="active" 
+            {% endif %}
+            href='/{{ v }}'>{{ v }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <!-- container-->
+    <div class="mx-auto relative bg-indigo-100 h-screen w-screen">
+    {% block form %}
+    {% endblock form %}
+    {% block content %}
+    {% endblock content %}
+      <!-- footer -->
+    {% if title!='home' %}
+    <div class="w-full bg-indigo-500 opacity-90">
+     <div class="mx-auto text-lg text-center text-white my-4">
+        dealerweb@profitcalls.in
+      </div>
+    </div>
+    {% endif %}
+   </div>
+  </body>
+<!-- common functions -->
+<script>
+const sync_frm_clr = () => {
+  const frm = document.getElementById('frm')
+  if (document.getElementById('txn').checked == true) {
+    frm.classList.remove('bg-red-300');
+    frm.classList.add('bg-green-500');
+  } else {
+    frm.classList.add('bg-red-300');
+    frm.classList.remove('bg-green-500');
+  }
+}
+const debugScript = true;
+const tblColCnt = (tableId, colNumber, ttlTagName) =>
+  {
+  let result = 0;
+  try
+  {
+    const tableElem = window.document.getElementById(tableId); 		   
+    const tableBody = tableElem.getElementsByTagName("tbody").item(0);
+    const howManyRows = tableBody.rows.length;
+    for (let i=1; i<(howManyRows-1); i++) // skip first and last row (hence i=1, and howManyRows-1)
+    {
+       let thisTrElem = tableBody.rows[i];
+       let thisTdElem = thisTrElem.cells[colNumber];			
+       let thisTextNode = thisTdElem.childNodes.item(0);
+       let thisNumber = parseFloat(thisTextNode.data);
+       if (!isNaN(thisNumber))
+         result += thisNumber;
+	  } // end for
+  } // end try
+  catch (ex)
+  {
+     window.alert("Exception in function computeTableColumnTotal()\n" + ex);
+     result = 0;
+  }
+  finally
+  {
+     const elemTtl = window.document.getElementById(ttlTagName);
+     elemTtl.innerHTML = parseInt(result);
+  }
+}
+</script>
+
+{% if title == 'new' %}
+<script>
+document.getElementById('txn').onclick = function() {
+  sync_frm_clr()
+}
+document.addEventListener('DOMContentLoaded', (event) => {
+  sync_frm_clr()
+}); 
+</script>
+<script src="../static/algolia.js"></script>
+{%  endif %} <!--end of new -->
+
+{% if title=='orders' %}
+<script src="../static/requests.js"></script>
+<script>
+document.getElementById('txn').onclick = function() {
+  sync_frm_clr()
+}
+/* consumed by modify and cancel order */ 
+const getRows = (my) => {
+  const tr =   my.parentNode.parentNode
+  const tdes = tr.children
+  let keys = []
+  for (i = 0; i< tdes.length; i++) {
+    inner = tdes[i].textContent
+    keys[i] = inner
+  }
+  console.log(keys)
+  let data = '';
+  if (keys[0] == 'LIMIT') {
+    data = 'LMT'
+  } 
+  else if(keys[0] == 'MARKET') {
+    data = 'MKT'  
+  }
+  else if(keys[0] == 'STOPLOSS_LIMIT') {
+    data = 'SL'  
+  }
+  else if(keys[0] == 'STOPLOSS_MARKET') {
+    data = 'SL-M'  
+  }
+  const otype = document.querySelectorAll(`input[data-title=${data}]`)
+  otype[0].setAttribute('checked', 'checked') 
+  let pdata = '';
+  if (keys[1] == 'CARRYFORWARD') {
+    pdata = 'NRML' 
+  } 
+  else if(keys[1] == 'INTRADAY') {
+    pdata = 'MIS'  
+  }
+  else if(keys[1] == 'DELIVERY') {
+    pdata = 'CNC'  
+  } 
+  const ptype = document.querySelectorAll(`input[data-title=${pdata}]`)
+  ptype[0].setAttribute('checked', 'checked') 
+  const price = document.getElementById('price')
+  price.value = keys[2]
+  const trigger = document.getElementById('trigger')
+  trigger.value = keys[3]
+  const qty = document.getElementById('qty')
+  qty.value = keys[4]
+  const symbol = document.getElementById('symbol')
+  symbol.value = keys[5]
+  const txn = document.getElementById('txn')
+  if (keys[6] == 'BUY') {
+    txn.setAttribute('checked', 'checked') 
+    frm.classList.remove('bg-red-300');
+    frm.classList.add('bg-green-500');
+  } else {
+    txn.removeAttribute('checked')
+    frm.classList.remove('bg-green-500');
+    frm.classList.add('bg-red-300')
+  }
+  const exchange = document.getElementById('exchange')
+  exchange.value = keys[7]
+  const token = document.getElementById('token')
+  token.value = keys[8]
+  const order_id = document.getElementById('order_id')
+  order_id.value = keys[9]
+  // key10 is empty
+  // key11 is condition for this loop
+  if (keys[11] == 'cancelled') {
+    data = 'DONT_DO_ANYTHING'
+  } else
+  if (keys[11] == 'complete') {
+    data = 'DONT_DO_ANYTHING'
+  } else
+  if (keys[11] == 'rejected') {
+    data = 'DONT_DO_ANYTHING'
+  }
+  const user_id = document.getElementById('user_id')
+  user_id.value = keys[12]
+  const title = document.getElementById('title')
+  title.innerHTML = symbol.value + ' (' + user_id.value + ')'
+  return data
+}
+
+const mdlOrderModify = (status) =>  {
+  const modal4 = document.getElementById('my-modal-4') 
+  if (status == 'DONT_DO_ANYTHING') {
+    modal4.click()
+  } else {  getLtp() }
+} 
+
+const btnMod = document.getElementsByClassName('btn-mod')
+for(let i = 0; i < btnMod.length; i++) {
+  btnMod[i].addEventListener('click', function() {
+    const order_status = getRows(this)
+    mdlOrderModify(order_status)
+  })
+}
+
+const getCancelOrder = (otype) => {
+  let key = '?user_id=';
+  if (user_id.value.length > 0) {
+    key += user_id.value; }
+  else { return }
+  if (order_id.value.length > 0) {
+    key = key + '&order_id=' + order_id.value; }
+  else { return }
+  if(otype =='SL' || otype =='SL-M') {
+    key = key + '&variety=STOPLOSS' 
+  } else if(otype =='MKT' || otype =='LMT') {
+    key = key + '&variety=NORMAL' 
+  } else { return }
+  get_data('/order_cancel/', key).then(result => {
+      // only change is the below
+      console.log(result)
+  })
+}
+
+const btnCls = document.getElementsByClassName('btn-cls')
+for(let i = 0; i < btnCls.length; i++) {
+  btnCls[i].addEventListener('click', function() {
+        const data = getRows(this)
+        getCancelOrder(data)        
+  })
+}
+</script> 
+{% endif %}
+<!-- end of orders -->
+
+{% if title=='positions' %}
+<script>
+  document.addEventListener('DOMContentLoaded', (event) => {
+  tblColCnt(tableId="table", colNumber=5, ttlTagName="pnl" );
+}); 
+</script>
+{% endif %}
+<!-- end of positions -->
+
+{% if title=='trades' %}
+<script>
+  document.addEventListener('DOMContentLoaded', (event) => {
+  tblColCnt(tableId="table", colNumber=2, ttlTagName="tradevalue" );
+}); 
+</script>
+{% endif %}
+<!-- end of trades -->
+</html>
