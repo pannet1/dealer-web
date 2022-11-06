@@ -1,5 +1,3 @@
-// duplicated from algolia.js
-// Function to do an Ajax call
 const get_data = async (url, keys) => {
   const response = await fetch(url+keys); // Generate the Response object
   if (response.ok) {
@@ -10,22 +8,23 @@ const get_data = async (url, keys) => {
   }
 };
 
-const getLtp = () => {
-  let key = '?symbol=';
+  const buildLtpUrl = () => {
+   const token = document.getElementById('token')
+   const symbol = document.getElementById('symbol')
+   const exchange = document.getElementById('exchange')
+    let key = '?symbol=';
   if (symbol.value.length > 0) {
     key += symbol.value; }
-  else { return }
+  else { return "" }
   if (token.value.length > 0) {
     key = key + '&token=' + token.value; }
-  else { return }
+  else { return "" }
   if (exchange.value.length > 0) {
     key = key + '&exchange=' + exchange.value; 
-    get_data('/ltp/', key).then(data => {
-      // only change is the below
-      document.getElementById('ltp').value = data[0][0];
-    });
+    return key
   }
-  else { return }
+  else { return ""}
 }
+
 
 
