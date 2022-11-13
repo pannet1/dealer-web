@@ -24,7 +24,7 @@ def get_broker_by_id(user_id: str)->AngelOne:
         if a._user_id == user_id:
             return a
 
-def lst_to_tbl(lst, args=None, kwargs=None, user_id:str = None ):    
+def lst_to_tbl(lst, args=None, kwargs=None, client_name:str = None ):    
     def filter_dict(dct, args=None, kwargs=None):
         new_dct = {}
         if args and len(args)>0:
@@ -32,10 +32,10 @@ def lst_to_tbl(lst, args=None, kwargs=None, user_id:str = None ):
                 if k in args:
                     new_dct[k] = v
             if any(new_dct):
-                new_dct['user_id'] = user_id
+                new_dct['client_name'] = client_name
                 return new_dct
             else:
-                dct['user_id'] = user_id
+                dct['client_name'] = client_name
                 return dct
                 
         # not tested
@@ -49,7 +49,7 @@ def lst_to_tbl(lst, args=None, kwargs=None, user_id:str = None ):
                     new_dct.append(d)
             return new_dct 
         else:
-            user_dct = {'user_id': user_id}
+            user_dct = {'client_name': client_name}
             for k, v in dct.items():                
                 user_dct[k] =  v
             return user_dct
@@ -97,7 +97,7 @@ def resp_to_lst(resp):
 def contracts():
     if futil.is_file_not_2day(dumpfile):  
         headers = {
-        "Host": "ecomsense.in",
+        "Host": "angelbroking.com",
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
@@ -115,7 +115,7 @@ def get_ltp(exch,sym,tkn):
     ao = random_broker()
     resp = ao.obj.ltpData(exch,sym,tkn)
     lst = resp_to_lst(resp)
-    head, ltp = lst_to_tbl(lst, ['ltp'], user_id=a._user_id)
+    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=a.client_name)
     return head, ltp
 
 def get_symbols(search):
@@ -133,7 +133,7 @@ def get_symbols(search):
                     break
         f.close()
         args = ['exch_seg', 'symbol', 'token', 'lotsize']
-        th, td = lst_to_tbl(j, args, user_id=a._user_id)
+        th, td = lst_to_tbl(j, args, client_name=a.client_name)
         return th, td
 
 def orders(args=None):
@@ -141,7 +141,7 @@ def orders(args=None):
     for a in ao:
         resp = a.orders
         lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args ,user_id=a._user_id)
+        th1, td1 = lst_to_tbl(lst, args ,client_name=a.client_name)
         if 'message' in th1:
             mh = th1
             md += td1
@@ -156,7 +156,7 @@ def trades():
         resp = a.trades
         lst = resp_to_lst(resp)
         args = ['user_id', 'tradingsymbol', 'optiontype', 'transactiontype', 'tradevalue', 'fillprice' ]
-        th1, td1 = lst_to_tbl(lst, args, user_id=a._user_id)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
         if 'message' in th1:
             mh = th1
             md += td1
@@ -174,7 +174,7 @@ def positions():
             'user_id','exchange', 'tradingsymbol', 'producttype', 'optiontype', 
                 'netqty', 'pnl', 'ltp'
         ]
-        th1, td1 = lst_to_tbl(lst, args , user_id=a._user_id)
+        th1, td1 = lst_to_tbl(lst, args , client_name=a.client_name)
         if 'message' in th1:
             mh = th1
             md += td1
@@ -188,7 +188,7 @@ def margins(args =None):
     for a in ao:
         resp = a.margins
         lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args , user_id=a._user_id)                
+        th1, td1 = lst_to_tbl(lst, args , client_name=a.client_name)
         if 'message' in th1:
             mh = th1
             md += td1
@@ -203,7 +203,7 @@ def order_place_by_user(user_id, kwargs):
     resp = a.order_place(kwargs)
     print(resp)
     lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, user_id=a._user_id)                
+    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
     if 'message' in th1:
         mh = th1
         md += td1
@@ -219,7 +219,7 @@ def order_modify_by_user(user_id, kwargs):
     print(kwargs)
     print(resp)
     lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, user_id=a._user_id)                
+    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
     if 'message' in th1:
         mh = th1
         md += td1
@@ -233,7 +233,7 @@ def order_cancel(user_id, order_id, variety):
     a = get_broker_by_id(user_id)
     resp = a.order_cancel(order_id, variety)
     lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, user_id=a._user_id)                
+    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
     if 'message' in th1:
         mh = th1
         md += td1
