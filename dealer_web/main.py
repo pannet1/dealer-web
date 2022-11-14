@@ -11,17 +11,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
 
 pages = ['home', 'margins', 'orders', 'trades', 'positions', 'new']
-dumpfile = "symbols.json"
 
 @app.post("/orders/")
 async def post_orders(request: Request,
-    qty: List[int], user_id: List[str], 
+    qty: List[int], client_name: List[str], 
     symbol: str = Form(), token: str = Form(),
     txn: Optional[str] = Form('off'), exchange: str = Form(),
     ptype: int = Form('0'), otype: int = Form('0'),      
     price: float = Form(), trigger: float = Form() ):
 
-    for i in range(len(user_id)):
+    for i in range(len(client_name)):
         if qty[i] > 0:
             txn_type = 'BUY' if txn=='on' else 'SELL'
             
@@ -58,7 +57,7 @@ async def post_orders(request: Request,
             "triggerprice": str(trigger),
             "quantity": str(qty[i])
             }
-            mh, md, th, td = user.order_place_by_user(user_id[i], params)
+            mh, md, th, td = user.order_place_by_user(client_name[i], params)
 
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages' : pages}
     if len(mh)>0:
@@ -69,7 +68,7 @@ async def post_orders(request: Request,
 
 @app.post("/order_modify/")
 async def order_modify(request: Request, order_id: str = Form(),
-    qty: int = Form(), user_id: str = Form(), 
+    qty: int = Form(), client_name: str = Form(), 
     symbol: str = Form(), token: str = Form(),
     txn: Optional[str] = Form('off'), exchange: str=Form(),
     ptype: int = Form('0'), otype: int = Form('0'),      
@@ -108,7 +107,7 @@ async def order_modify(request: Request, order_id: str = Form(),
     "triggerprice": str(trigger),
     "quantity": str(qty),
     }
-    mh, md, th, td = user.order_modify_by_user(user_id, params)
+    mh, md, th, td = user.order_modify_by_user(client_name, params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages' : pages}
     if len(mh)>0:
         ctx['mh'], ctx['md'] = mh, md
@@ -125,9 +124,9 @@ async def home(request: Request):
     return jt.TemplateResponse("table.html",ctx )
 
 @app.get("/order_cancel/")
-async def order_cancel(request: Request, user_id: str, 
+async def order_cancel(request: Request, client_name: str, 
                  order_id: str, variety: str ):
-    mh, md, th, td = user.order_cancel(user_id, order_id, variety)
+    mh, md, th, td = user.order_cancel(client_name, order_id, variety)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages' : pages}
     if len(mh)>0:
         ctx['mh'], ctx['md'] = mh, md

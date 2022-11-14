@@ -54,16 +54,11 @@
     </tr>
       {% for tr in data %}
     <tr>
-        {% for v in tr %}
-        {% if (v | int) > 0  %} 
-          <td>{{ v | int }}</td>
-        {% else %}
-        <td><input name="user_id" class="hidden" value='{{ v }}'>{{ v }}</td>
-        {% endif %}
-        {% endfor %}
-          <td>
-            <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
-          </td>
+        <td>{{ tr[0] | int }}</td>
+        <td><input name="client_name" class="hidden" value='{{ tr[1] }}'>{{ tr[1] }}</td>
+        <td>
+          <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
+        </td>
       </tr>
       {% endfor %}      
       {% endif %}
@@ -78,10 +73,10 @@
       {% for tr in md %}
     <tr>
         {% for v in tr %}
-        {% if (v | int) > 0  %} 
+        {% if (v | int) >= 0 or (v | int) < 0   %} 
           <td>{{ v | int }}</td>
         {% else %}
-        <td><input name="user_id[]" class="hidden" value='{{ v }}'>{{ v }}</td>
+        <td><input name="client_name[]" class="hidden" value='{{ v }}'>{{ v }}</td>
         {% endif %}
         {% endfor %}
           <td>

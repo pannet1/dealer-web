@@ -2,13 +2,15 @@
 <!-- The button to open modal -->
 {% block content %}
   <div class="mb-5 overflow-x-auto">
-    <table class="table w-full">          
+    <table class="table w-full">
+      <thead>          
       <tr>
       {% for k in th %}
           <th>{{ k }}</th>      
       {% endfor %}
           <th colspan='2'>Operations</th>
       </tr>
+      </thead>
       {% for tr in data %}
       <tr>
        {% for v in tr %}
@@ -64,7 +66,7 @@
     </label>
     <input id="ltp" type="text" class="input input-ghost" readonly="readonly" />
     <input id="symbol" name="symbol" type="hidden" class="input input-ghost" />
-    <input id="user_id" name="user_id" type="hidden" class="input input-ghost float-right" readonly="readonly" style="width:30%" />
+    <input id="client_name" name="client_name" type="hidden" class="input input-ghost float-right" readonly="readonly" style="width:30%" />
   </div>
   <div class="form-control relative inline-block">
     <label class="label">
@@ -79,7 +81,7 @@
       <span class="label-text">Qty</span>
     </label>
     <input type="text" id="qty" name="qty" class="input input-bordered" />
-  </div>
+  </div 
   <div class="form-control">
     <label class="label cursor-pointer">
       <span class="label-text text-lg">SELL</span>

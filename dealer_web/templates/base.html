@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="./../static/main.css" rel="stylesheet">
+    {% if title == 'new' %}
     <link href="./../static/autocomplete.css" rel="stylesheet">
+    {% endif %}
     <script src="../static/requests.js"></script>
     <script src="../static/main.js"></script>
   </head>
@@ -41,30 +43,16 @@
     {% endif %}
    </div>
   </body>
-<!-- common functions -->
+<!-- common func main.js moved to header -->
 
 {% if title == 'new' %}
-<script>
-// consumes sync_frm_clr from main.js
-const txn = document.getElementById('txn')
-txn.onclick = function() {
-  if (txn.checked == true) {
-    sync_frm_clr('BUY') } else {
-    sync_frm_clr('SELL')
-  }
-}
-document.addEventListener('DOMContentLoaded', (event) => {
-  if (txn.checked == true)
-  sync_frm_clr('BUY')
-}); 
-</script>
+<script src="../static/new.js"></script>
 <script src="../static/autocomplete.js"></script>
 {%  endif %}
   <!--end o  new -->
 
 {% if title=='orders' %}
 <script> 
- 
 /* consumed by modify and cancel order */ 
 const getRows = (my) => {
   const tr =   my.parentNode.parentNode
@@ -135,10 +123,10 @@ const getRows = (my) => {
   if (keys[11] == 'rejected') {
     data = 'DONT_DO_ANYTHING'
   }
-  const user_id = document.getElementById('user_id')
-  user_id.value = keys[12]
+  const client_name = document.getElementById('client_name')
+  client_name.value = keys[12]
   const title = document.getElementById('title')
-  title.innerHTML = symbol.value + ' (' + user_id.value + ')'
+  title.innerHTML = symbol.value + ' (' + client_name.value + ')'
   return data
 }
 
@@ -170,9 +158,9 @@ for(let i = 0; i < btnMod.length; i++) {
 /*  cancel order */
 // consumes get_data from requests.js //
 const getCancelOrder = (otype) => {
-  let key = '?user_id=';
-  if (user_id.value.length > 0) {
-    key += user_id.value; }
+  let key = '?client_name=';
+  if (client_name.value.length > 0) {
+    key += client_name.value; }
   else { return }
   if (order_id.value.length > 0) {
     key = key + '&order_id=' + order_id.value; }
@@ -193,19 +181,13 @@ for(let i = 0; i < btnCncl.length; i++) {
   btnCncl[i].addEventListener('click', function() {
     const data = getRows(this)
     getCancelOrder(data) 
-})
-
+  })
 }
 </script> 
 {% endif %}
 <!-- end of orders -->
-
 {% if title=='positions' %}
-<script>
-  document.addEventListener('DOMContentLoaded', (event) => {
-  tblColCnt(tableId="table", colNumber=5, ttlTagName="pnl" );
-}); 
-</script>
+<script src="../static/positions.js"></script>
 {% endif %}
 <!-- end of positions -->
 </html>

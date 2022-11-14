@@ -13,7 +13,7 @@ for user in users:
     if a.authenticate():
         ao.append(a)
 
-dumpfile = "symbols.json"
+dumpfile = "../../../confid/symbols.json"
 
 def random_broker()->AngelOne:
     i = random.randint(0, len(ao) - 1)

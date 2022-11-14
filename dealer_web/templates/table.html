@@ -13,20 +13,22 @@
       </form>
       {% endif %}
         <div class="mb-5 overflow-x-auto">
-          <table id="table" class="table w-full"><thead>          
+          <table id="table" class="table w-full">
+            <thead>          
             <tr>
             {% for k in th %}
                 <th>{{ k }}</th>      
             {% endfor %}
-            </tr></thead>
-            <tbody>
-            {% for tr in data %}
-            <tr>
-             {% for v in tr %}
-                <td>{{ v }}</td>
-              {% endfor %}
             </tr>
-            {% endfor %}
+            </thead>
+            <tbody>
+              {% for tr in data %}
+              <tr>
+               {% for v in tr %}
+                  <td>{{ v }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
             </tbody>
             <tfoot>
               <tr>
@@ -34,11 +36,9 @@
                 <th id="{{ k }}"></th>      
                 {% endfor %}
               </tr>
-
             </tfoot>
           </table>
         </div>
-
      <div class="overflow-x-auto mb-5">
        <table class="table w-full">
             <tr>
