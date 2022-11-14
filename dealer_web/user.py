@@ -19,9 +19,9 @@ def random_broker()->AngelOne:
     i = random.randint(0, len(ao) - 1)
     return ao[i]
 
-def get_broker_by_id(user_id: str)->AngelOne:
+def get_broker_by_id(client_name: str)->AngelOne:
     for a in ao:
-        if a._user_id == user_id:
+        if a.client_name == client_name:
             return a
 
 def lst_to_tbl(lst, args=None, kwargs=None, client_name:str = None ):    
@@ -155,7 +155,7 @@ def trades():
     for a in ao:
         resp = a.trades
         lst = resp_to_lst(resp)
-        args = ['user_id', 'tradingsymbol', 'optiontype', 'transactiontype', 'tradevalue', 'fillprice' ]
+        args = ['tradingsymbol', 'optiontype', 'transactiontype', 'tradevalue', 'fillprice' ]
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
         if 'message' in th1:
             mh = th1
@@ -171,10 +171,10 @@ def positions():
         resp = a.positions
         lst = resp_to_lst(resp)
         args = [ 
-            'user_id','exchange', 'tradingsymbol', 'producttype', 'optiontype', 
-                'netqty', 'pnl', 'ltp'
+            'exchange', 'tradingsymbol', 'producttype', 'optiontype', 
+                'netqty', 'pnl', 'ltp', 'avgnetprice', 'netprice'
         ]
-        th1, td1 = lst_to_tbl(lst, args , client_name=a.client_name)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
         if 'message' in th1:
             mh = th1
             md += td1
@@ -188,6 +188,9 @@ def margins(args =None):
     for a in ao:
         resp = a.margins
         lst = resp_to_lst(resp)
+        if not args:
+            args = [ 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
+                'utilisedpayout'  ]
         th1, td1 = lst_to_tbl(lst, args , client_name=a.client_name)
         if 'message' in th1:
             mh = th1
@@ -197,9 +200,9 @@ def margins(args =None):
             td += td1 
     return mh, md, th, td
 
-def order_place_by_user(user_id, kwargs):    
+def order_place_by_user(client_name, kwargs):    
     th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(user_id)
+    a = get_broker_by_id(client_name)
     resp = a.order_place(kwargs)
     print(resp)
     lst = resp_to_lst(resp)
@@ -212,9 +215,9 @@ def order_place_by_user(user_id, kwargs):
         td += td1 
     return mh, md, th, td
 
-def order_modify_by_user(user_id, kwargs):
+def order_modify_by_user(client_name, kwargs):
     th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(user_id)
+    a = get_broker_by_id(client_name)
     resp = a.order_modify(kwargs)
     print(kwargs)
     print(resp)
@@ -228,9 +231,9 @@ def order_modify_by_user(user_id, kwargs):
         td += td1 
     return mh, md, th, td
 
-def order_cancel(user_id, order_id, variety):
+def order_cancel(client_name, order_id, variety):
     th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(user_id)
+    a = get_broker_by_id(client_name)
     resp = a.order_cancel(order_id, variety)
     lst = resp_to_lst(resp)
     th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
