@@ -1,4 +1,4 @@
-const debugScript = true;
+const debugScript = false;
 
 const sync_frm_clr = (bors) => {
   const frm = document.getElementById('frm')
@@ -19,21 +19,21 @@ const tblColCnt = (tableId, colNumber, ttlTagName) =>
     const tableElem = window.document.getElementById(tableId); 		   
     const tableBody = tableElem.getElementsByTagName("tbody").item(0);
     const howManyRows = tableBody.rows.length;
-    for (let i=1; i<(howManyRows-1); i++) // skip first and last row (hence i=1, and howManyRows-1)
+    for (let i=0; i<(howManyRows); i++) // skip first and last row (hence i=1, and howManyRows-1)
     {
        let thisTrElem = tableBody.rows[i];
        let thisTdElem = thisTrElem.cells[colNumber];			
        let thisTextNode = thisTdElem.childNodes.item(0);
        let thisNumber = parseFloat(thisTextNode.data);
-       if (!isNaN(thisNumber))
-         result += thisNumber;
+       if (!isNaN(thisNumber)) 
+         result += thisNumber;       
+
 	  } // end for
 
   } // end try
   catch (ex)
   {
      window.alert("Exception in function tblColCnt()\n" + ex);
-     result = 0;
   }
   finally
   {
