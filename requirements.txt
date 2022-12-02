@@ -5,5 +5,4 @@ smartapi-python
 python-multipart
 xlrd
 pyotp
-loguru
 jinja2
