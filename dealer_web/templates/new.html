@@ -44,11 +44,11 @@
 {% endblock form %}
 
 {% block content %}
-  <table class="mx-auto table table-compact">      
+  <table class="mx-auto table table-compact">
     {% if th %}
     <tr>
       {% for k in th %}
-          <th>{{ k }}</th>      
+          <th>{{ k }}</th>
       {% endfor %}
       <th>qty</th>
     </tr>
@@ -60,20 +60,20 @@
           <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
         </td>
       </tr>
-      {% endfor %}      
+      {% endfor %}
       {% endif %}
 
     {% if mh %}
     <tr>
       {% for k in mh %}
-          <th>{{ k }}</th>      
+          <th>{{ k }}</th>
       {% endfor %}
       <th>qty</th>
     </tr>
       {% for tr in md %}
     <tr>
         {% for v in tr %}
-        {% if (v | int) >= 0 or (v | int) < 0   %} 
+        {% if (v | int) >= 0 or (v | int) < 0   %}
           <td>{{ v | int }}</td>
         {% else %}
         <td><input name="client_name[]" class="hidden" value='{{ v }}'>{{ v }}</td>
@@ -83,11 +83,11 @@
             <input name="qty[]" type="number" class="input input-primary input-bordered input-sm" min="0" value="0">
           </td>
       </tr>
-      {% endfor %}      
+      {% endfor %}
       {%  endif %}
       <tr>
         <td colspan="3">
-          <input type="submit" class="btn btn-primary btn-outline btn-block" value="SEND"/>          
+          <input type="submit" class="btn btn-primary btn-outline btn-block" value="SEND"/>
         </td>
       </tr>
     </table>

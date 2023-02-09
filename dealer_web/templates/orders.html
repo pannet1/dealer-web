@@ -3,10 +3,10 @@
 {% block content %}
   <div class="mb-5 overflow-x-auto">
     <table class="table w-full">
-      <thead>          
+      <thead>
       <tr>
       {% for k in th %}
-          <th>{{ k }}</th>      
+          <th>{{ k }}</th>
       {% endfor %}
           <th colspan='2'>Operations</th>
       </tr>
@@ -14,7 +14,16 @@
       {% for tr in data %}
       <tr>
        {% for v in tr %}
+       {% if v is string and '&' in v %}
+          <td>
+              <button class='btn btn-success'><a href='{{ v }}'>Bulk</a></button>
+          </td>
+      {% elif v is string and v | length>31  %}
+          <td>{{ v | truncate(31, True) }}</td>
+      {% else  %}
           <td>{{ v }}</td>
+      {% endif %}
+
         {% endfor %}
         <td>
         <label for="my-modal-4" class="btn btn-info btn-mod ">MOD</label>
@@ -30,7 +39,7 @@
  <table class="table w-full">
     <tr>
     {% for k in mh %}
-        <th>{{ k }}</th>      
+        <th>{{ k }}</th>
     {% endfor %}
     </tr>
     {% for tr in md %}
@@ -47,8 +56,8 @@
   <input type="checkbox" id="my-modal-4" class="modal-toggle" />
   <label for="my-modal-4" class="modal cursor-pointer">
   <label class="modal-box relative" for="">
-  <label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>            
-  <h1 id="title" class="text-lg font-bold">Congratulations random Internet user!</h1>
+  <label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+  <h1 id="title" class="text-lg font-bold">No Title</h1>
   <form id='frm' method='post' action='/order_modify/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full">
     <div class="btn-group">
       <input type="radio" name="ptype" value="1" data-title="NRML" class="btn" checked />
@@ -82,7 +91,7 @@
         <span class="label-text">Qty</span>
       </label>
       <input type="text" id="qty" name="qty" class="input input-bordered" />
-      </div> 
+      </div>
     <div class="form-control">
       <label class="label cursor-pointer">
         <span class="label-text text-lg">SELL</span>
@@ -93,7 +102,7 @@
         <input id="exchange" type='hidden' name="exchange" />
         <input id="token" type='hidden' name="token" />
     </div>
-    <input type="submit" class="btn btn-primary btn-outline btn-block" value="MODIFY"/>          
+    <input type="submit" class="btn btn-primary btn-outline btn-block" value="MODIFY"/>
   </form>
   </label>
   </label>

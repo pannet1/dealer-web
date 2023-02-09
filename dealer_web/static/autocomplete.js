@@ -9,7 +9,7 @@ const ac_input = document.getElementById("symbol");
 
 /*******************************************
 
-// main autocomplete function 
+// main autocomplete function
 
 //******************************************/
 const autocomplete = (inp) => {
@@ -21,7 +21,7 @@ let currentFocus;
     const val = this.value;
     /*close any already open lists of autocompleted values*/
     closeAllLists();
-    if (!val || (val.length <=2) || val == prevSearch) 
+    if (!val || (val.length <=2) || val == prevSearch)
     { return false;}
     else { prevSearch = val}
     currentFocus = -1;
@@ -52,7 +52,7 @@ let currentFocus;
           if (key.length > 0) {
             get_data('/ltp/', key).then(data => {
               price.value = data[0][0];
-              trigger.value = data[0][0]
+              trigger.value = 0
             });
           }
 
@@ -61,7 +61,7 @@ let currentFocus;
         } // end of if
       } // end of for
     });  // end of get_data
-    
+
     /*execute a function presses a key on the keyboard:*/
     inp.addEventListener("keydown", function(e) {
       let x = document.getElementById(this.id + "autocomplete-list");
@@ -99,14 +99,14 @@ let currentFocus;
     /*add class "autocomplete-active":*/
     x[currentFocus].classList.add("autocomplete-active");
   }
-  
+
   function removeActive(x) {
     /*a function to remove the "active" class from all autocomplete items:*/
     for (let i = 0; i < x.length; i++) {
       x[i].classList.remove("autocomplete-active");
     }
   }
-  
+
   function closeAllLists(elmnt) {
     /*close all autocomplete lists in the document,
     except the one passed as an argument:*/
@@ -125,7 +125,7 @@ let currentFocus;
 }
 /*******************************/
 // end of autocomplete
-/******************************/ 
+/******************************/
 autocomplete(ac_input)
 // Init a timeout variable to be used below
 // Listen for keystroke events
@@ -138,7 +138,7 @@ ac_input.addEventListener('keyup', function (e) {
   // if it has been less than <MILLISECONDS>
   clearTimeout(timeout);
   // Make a new timeout set to go off in 1000ms (1 second)
-  timeout = setTimeout(function () {        
+  timeout = setTimeout(function () {
     console.log("timeout")
   }, 1000);
 })

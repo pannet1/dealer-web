@@ -6,6 +6,7 @@ import inspect
 import user
 from typing import List, Optional
 
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
@@ -20,7 +21,7 @@ async def post_orders(request: Request,
                       txn: Optional[str] = Form('off'), exchange: str = Form(),
                       ptype: int = Form('0'), otype: int = Form('0'),
                       price: float = Form(), trigger: float = Form()):
-
+    mh, md, th, td = [], [], [], []
     for i in range(len(client_name)):
         if qty[i] > 0:
             txn_type = 'BUY' if txn == 'on' else 'SELL'
@@ -65,6 +66,43 @@ async def post_orders(request: Request,
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
+
+
+@app.post("/bulk_modify/")
+async def post_bulk_modify(request: Request, client_name: List[str],
+                           orderid: List[str], quantity: List[str],
+                           exchange: str = Form(), symboltoken: str = Form(),
+                           tradingsymbol: str = Form(), ordertype: str = Form(),
+                           triggerprice: str = Form(),  price: str = Form()):
+
+    if ordertype == 'STOPLOSS_LIMIT':
+        variety = 'STOPLOSS'
+    elif ordertype == 'STOPLOSS_MARKET':
+        variety = 'STOPLOSS'
+    else:
+        variety = "NORMAL"
+    for i, v in enumerate(orderid):
+        params = {
+            'orderid': orderid[i],
+            'exchange': exchange,
+            'tradingsymbol': tradingsymbol,
+            'variety': variety,
+            'symboltoken': symboltoken,
+            'ordertype': f'{ordertype.strip()}',
+            'price': price,
+            'quantity': quantity[i],
+            'triggerprice': triggerprice,
+            'duration': 'DAY'
+        }
+        mh, md, th, td = user.order_modify_by_user(client_name[i], params)
+    """
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    if len(mh) > 0:
+        ctx['mh'], ctx['md'] = mh, md
+    if (len(th) > 0):
+        ctx['th'], ctx['data'] = th, td
+    return jt.TemplateResponse("table.html", ctx)
+    """
 
 
 @app.post("/order_modify/")
@@ -149,7 +187,60 @@ async def mw(search):
     return data
 
 
-@app.get("/orders", response_class=HTMLResponse)
+@app.get("/bulk_modify/", response_class=HTMLResponse)
+async def get_bulk_modify(
+        request: Request,
+        exchange: str,
+        tradingsymbol: str,
+        symboltoken: str,
+        transactiontype: str,
+        producttype: str,
+        status: str,
+        ordertype: str):
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    subs = {
+        "exchange": exchange,
+        "tradingsymbol": tradingsymbol,
+        "symboltoken": symboltoken,
+        "transactiontype": transactiontype,
+        "ordertype": ordertype,
+        "status": status,
+        "producttype": producttype
+    }
+    mh, md, th, td = user.orders()
+    if len(th) > 0:
+        ords = []
+        for tr in td:
+            ords.append(dict(zip(th, tr)))
+        fltr = []
+        for ord in ords:
+            success = True
+            for k, v in subs.items():
+                if ord.get(k) != v:
+                    success = False
+                    break
+            if success:
+                fltr.append(ord)
+        if any(fltr):
+            fdata = []
+            for f in fltr:
+                fdata.append([f.get('client_name'),
+                              f.get('orderid'),
+                              f.get('price'),
+                              f.get('triggerprice'),
+                              f.get('quantity')
+                              ])
+            ctx['th'], ctx['data'] = ['client_name', 'orderid',
+                                      'prc/trgr', 'quantity'], fdata
+    remv, flt_ltp = user.get_ltp(
+        subs['exchange'], subs['tradingsymbol'], subs['symboltoken'])
+    subs['price'] = flt_ltp[0][0]
+    subs['trigger'] = 0
+    ctx['subs'] = [subs]
+    return jt.TemplateResponse("modify.html", ctx)
+
+
+@ app.get("/orders", response_class=HTMLResponse)
 async def orders(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     args = ['producttype', 'ordertype', 'price', 'triggerprice', 'quantity', 'tradingsymbol',
@@ -158,11 +249,18 @@ async def orders(request: Request):
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
+        for ord in td:
+            dct = dict(zip(th, ord))
+            url = '/bulk_modify/?'
+            for k, v in dct.items():
+                url += f'{k}={v}&'
+            ord.append(url)
+            print(url)
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("orders.html", ctx)
 
 
-@app.get("/trades", response_class=HTMLResponse)
+@ app.get("/trades", response_class=HTMLResponse)
 async def trades(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     mh, md, th, td = user.trades()
@@ -173,7 +271,7 @@ async def trades(request: Request):
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/positions", response_class=HTMLResponse)
+@ app.get("/positions", response_class=HTMLResponse)
 async def positions(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     mh, md, th, td = user.positions()
@@ -184,7 +282,7 @@ async def positions(request: Request):
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/new", response_class=HTMLResponse)
+@ app.get("/new", response_class=HTMLResponse)
 async def new(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     args = ['client_name', 'net']
@@ -196,7 +294,7 @@ async def new(request: Request):
     return jt.TemplateResponse("new.html", ctx)
 
 
-@app.get("/margins", response_class=HTMLResponse)
+@ app.get("/margins", response_class=HTMLResponse)
 async def margins(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     mh, md, th, td = user.margins()
