@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import inspect
 import user
 from typing import List, Optional
-
+import uvicorn
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -303,3 +303,6 @@ async def margins(request: Request):
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
