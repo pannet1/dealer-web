@@ -81,6 +81,7 @@ async def post_bulk_modify(request: Request, client_name: List[str],
         variety = 'STOPLOSS'
     else:
         variety = "NORMAL"
+    print(price)
     for i, v in enumerate(orderid):
         params = {
             'orderid': orderid[i],
@@ -94,15 +95,14 @@ async def post_bulk_modify(request: Request, client_name: List[str],
             'triggerprice': triggerprice,
             'duration': 'DAY'
         }
+        print(params)
         mh, md, th, td = user.order_modify_by_user(client_name[i], params)
-    """
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
-    """
 
 
 @app.post("/order_modify/")

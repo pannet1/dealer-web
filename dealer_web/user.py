@@ -217,7 +217,7 @@ def margins(args=None):
 def order_place_by_user(client_name, kwargs):
     th, td, mh, md = [], [], [], []
     a = get_broker_by_id(client_name)
-    resp = a.order_place(kwargs)
+    resp = a.order_place(**kwargs)
     print(resp)
     lst = resp_to_lst(resp)
     th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
