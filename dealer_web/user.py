@@ -134,8 +134,8 @@ def get_symbols(search):
         j = []
         for i in data:
             if i['symbol'][:l] == search.upper():
-                #ltp = get_ltp(i['exch_seg'], i['symbol'], i['token'])
-                #i['ltp'] = ltp[0]
+                # ltp = get_ltp(i['exch_seg'], i['symbol'], i['token'])
+                # i['ltp'] = ltp[0]
                 j.append(i)
                 if len(j) > 15:
                     break
@@ -260,3 +260,20 @@ def order_cancel(client_name, order_id, variety):
         th = th1
         td += td1
     return mh, md, th, td
+
+
+# equity trade functions
+def get_users():
+    return ao
+
+
+def get_token(row):
+    f = open(dumpfile)
+    data = json.load(f)
+    length = len(row.symbol)
+    if length > 0:
+        for i in data:
+            if i['symbol'][:length] == row.symbol.upper():
+                token = i['token']
+        f.close()
+    return token
