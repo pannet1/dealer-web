@@ -268,12 +268,21 @@ def get_users():
 
 
 def get_token(row):
-    f = open(dumpfile)
-    data = json.load(f)
-    length = len(row.symbol)
-    if length > 0:
-        for i in data:
-            if i['symbol'][:length] == row.symbol.upper():
-                token = i['token']
-        f.close()
-    return token
+    try:
+        f = open(dumpfile)
+        data = json.load(f)
+        length = len(row.symbol)
+        print(row.symbol)
+        if length > 0:
+            for i in data:
+                if i['symbol'][:length] == row.symbol.upper():
+                    token = i['token']
+            f.close()
+            return token
+    except Exception as e:
+        print(e)
+        return 0
+    else:
+        return token
+
+
