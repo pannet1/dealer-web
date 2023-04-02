@@ -5,6 +5,7 @@ import concurrent.futures as cf
 import user
 from toolkit.fileutils import Fileutils
 from time import sleep
+from keltner import get_kc
 
 # user preferences
 PERC = 0.01
@@ -12,7 +13,8 @@ futil = Fileutils()
 
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
 df_empty = pd.DataFrame()
-fpath = "../../../confid/"
+fpath = "../../../data/"
+kpath = fpath + "keltner/"
 
 
 class Equity:
@@ -21,13 +23,34 @@ class Equity:
         user.contracts()
         self.df = pd.DataFrame()
         self.sleep = 1
-        self.yday = pendulum.yesterday()
-        self.now = pendulum.now()
+        self.yday = pendulum.yesterday().subtract(days=3)
+        self.now = pendulum.now().subtract(days=2)
 
-    def get_ohlc(self, symboltoken, to, tf):
+    def get_high(self, symboltoken, fm, to):
+        try:
+            ao = user.random_broker()
+            param = {
+                "exchange": "NSE",
+                "symboltoken": symboltoken,
+                "interval": "ONE_DAY",
+                "fromdate": fm,
+                "todate": to,
+            }
+            resp = ao.obj.getCandleData(param)
+            high = resp.get('data')[:-1][0][2]
+            self.sleep = 1
+            print(f"returning high {high}")
+            return high
+        except Exception as e:
+            print(f"{e} while getting high \n sleeping for {self.sleep} sec(s)")
+            sleep(self.sleep)
+            self.sleep += 1
+            return 0
+
+    def get_ohlc(self, symboltoken, hr, min, tf):
         try:
             fro = self.now.set(hour=9, minute=14).to_datetime_string()[:-3]
-            nto = self.now.set(hour=9, minute=to).to_datetime_string()[:-3]
+            nto = self.now.set(hour=hr, minute=min).to_datetime_string()[:-3]
             lst_col = ["o", "h", "l", "c"]
             empty_ohlc = pd.DataFrame(columns=lst_col, data=[[0, 0, 0, 0]])
             ao = user.random_broker()
@@ -63,6 +86,36 @@ class Equity:
             print(f"{e} while getting pdh")
             return empty_ohlc
 
+    def get_keltner(self, symboltoken):
+        try:
+            fro = self.yday.set(hour=11, minute=20).to_datetime_string()[:-3]
+            nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
+            ao = user.random_broker()
+            param = {
+                "exchange": "NSE",
+                "symboltoken": symboltoken,
+                "interval": "FIVE_MINUTE",
+                "fromdate": fro,
+                "todate": nto,
+            }
+            resp = ao.obj.getCandleData(param)
+            if resp.get('data'):
+                data = resp.get('data')
+                df = pd.DataFrame(columns=lst_dohlcv, data=data)
+                df.drop("v", inplace=True, axis=1)
+                times = lst_dohlcv[0]
+                df[times] = pd.to_datetime(df[times])
+                df = df.set_index("dtime")
+                df.to_pickle(f"{fpath}pickle/{row.symbol}.pkl")
+            self.sleep = 1
+        except Exception as e:
+            print(f"{e} while keltner \n sleeping for {self.sleep} sec(s)")
+            sleep(self.sleep)
+            self.sleep += 1
+            return df_empty
+        else:
+            return df
+
     def set_symbols(self):
         with open("../../../confid/symbols.json", "rb") as ojsn:
             data = orjson.loads(ojsn.read())
@@ -81,27 +134,6 @@ class Equity:
         df_sym_tok['pdh'] = 0
         print(df_sym_tok.head(5))
         self.df = df_sym_tok
-
-    def get_high(self, symboltoken, fm, to):
-        try:
-            ao = user.random_broker()
-            param = {
-                "exchange": "NSE",
-                "symboltoken": symboltoken,
-                "interval": "ONE_DAY",
-                "fromdate": fm,
-                "todate": to,
-            }
-            resp = ao.obj.getCandleData(param)
-            high = resp.get('data')[:-1][0][2]
-            self.sleep = 1
-            print(f"returning high {high}")
-            return high
-        except Exception as e:
-            print(f"{e} while getting high \n sleeping for {self.sleep} sec(s)")
-            sleep(self.sleep)
-            self.sleep += 1
-            return 0
 
     def get_pdhs(self, fm, to):
         df_cp = self.df.query("pdh==0")
@@ -164,19 +196,42 @@ if __name__ == "__main__":
     print("CHECKING FOR PERCENTAGE")
     df_ohlc = df_empty
     for i, row in eqty.df.iterrows():
-        df = eqty.get_ohlc(row.symboltoken, 17, "1Min")
+        df = eqty.get_ohlc(row.symboltoken, 9, 19, "1Min")
         df['symbol'] = row.symbol
         if df_ohlc.empty:
             df_ohlc = df
         else:
             df_ohlc = pd.concat([df_ohlc, df], ignore_index=True)
+
     if not df_ohlc.empty:
+        # filter only those with valid highs
         df_ohlc = df_ohlc.query("h>0")
         df_ohlc = eqty.df.merge(df_ohlc, how="left", on=['symbol'])
+        # distance between low and pdh
         df_ohlc["lminuspdh"] = df_ohlc.eval("pdh - l")
+        # percentage rule on 1st Min candle
         str_eval = f"lminuspdh / l <={PERC}"
         df_ohlc["pct_rule"] = df_ohlc.eval(str_eval)
         df_ohlc = df_ohlc.query("pct_rule==True")
-        df_ohlc.drop('lminuspdh', inplace=True, axis=1)
-        df_ohlc.to_csv(fpath + "3_pct_rule.csv", index=False)
+        df_ohlc.drop(
+            ['lminuspdh', 'o', 'h', 'l', 'c'],
+            inplace=True, axis=1)
         print(df_ohlc)
+        eqty.df = df_ohlc
+        df_ohlc.to_csv(fpath + "3_pct_rule.csv", index=False)
+    """
+    keltner channel
+    """
+    empty_symb = []
+    for i, row in eqty.df.iterrows():
+        df = eqty.get_keltner(row.symboltoken)
+        if df.empty:
+            empty_symb.append(row.symboltoken)
+    print(empty_symb)
+
+    pkls = futil.get_files_with_extn("pkl", fpath + "pickle/")
+    for pkl in pkls:
+        df_sym = pd.read_pickle(fpath + "pickle/" + pkl)
+        df_sym['mid'], df_sym['upr'], df_sym['blw'] = get_kc(
+            df_sym['h'], df_sym['l'], df_sym['c'], 50, 5, 50)
+        df_sym.to_csv(kpath + pkl[:-4] + ".csv")
