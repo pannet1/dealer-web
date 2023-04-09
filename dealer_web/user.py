@@ -5,7 +5,7 @@ import json
 import random
 
 futil = Fileutils()
-users = futil.xls_to_dict("../../../confid/ao_users.xls")
+users = futil.xls_to_dict("../../confid/ao_users.xls")
 ao = []
 
 
@@ -14,7 +14,7 @@ for user in users:
     if a.authenticate():
         ao.append(a)
 
-dumpfile = "../../../confid/symbols.json"
+dumpfile = "../../confid/symbols.json"
 
 
 def random_broker() -> AngelOne:
@@ -284,5 +284,3 @@ def get_token(row):
         return 0
     else:
         return token
-
-
