@@ -246,11 +246,9 @@ async def get_pos_modify(
         netqty: int,
         producttype: str,):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    transactiontype = 'BUY' if netqty > 0 else "SELL"
     subs = {
         "exchange": exchange,
         "tradingsymbol": tradingsymbol,
-        "transactiontype": transactiontype,
         "producttype": producttype
     }
     mh, md, th, td = user.positions()
@@ -258,24 +256,39 @@ async def get_pos_modify(
         ords = []
         for tr in td:
             ords.append(dict(zip(th, tr)))
+        print(ords)
         fltr = []
         for ord in ords:
             success = True
             for k, v in subs.items():
-                if ord.get(k) != v:
+                if k == 'netqty':
+                    if v > 0 and ord.get(k) < 0:
+                        success = False
+                        break
+                    elif v < 0 and ord.get(k) > 0:
+                        success = False
+                        break
+                    """
+                    elif ord.get(k) == 0:
+                        success = False
+                        break
+                    """
+                elif ord.get(k) != v:
                     success = False
+                    print(f"False: {k}{v}")
                     break
             if success:
                 fltr.append(ord)
         if any(fltr):
             fdata = []
             for f in fltr:
-                fdata.append([f.get('client_name'),
-                              # f.get('orderid'),
-                              # f.get('price'),
-                              # f.get('triggerprice'),
-                              f.get('quantity')
-                              ])
+                fdata.append([
+                    # f.get('client_name'),
+                    # f.get('orderid'),
+                    # f.get('price'),
+                    # f.get('triggerprice'),
+                    f.get('netqty')
+                ])
             ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
     """
     remv, flt_ltp = user.get_ltp(
