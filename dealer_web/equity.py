@@ -6,12 +6,11 @@ import user
 from toolkit.fileutils import Fileutils
 from time import sleep
 from keltner import get_kc
-import warnings
 
 # user preferences
 PERC = 0.01
-TRADE_DAY_TMINUS = 1
-YESTERDAY_TMINUS = 2
+TRADE_DAY_TMINUS = 2
+YESTERDAY_TMINUS = 1
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
@@ -20,9 +19,6 @@ fpath = "../../"
 cpath = fpath + "confid/"
 dpath = fpath + "data/"
 kpath = dpath + "keltner/"
-
-warnings.filterwarnings(
-    'ignore', 'A value is trying to be set on a copy of a slice from a DataFrame')
 
 pd.options.mode.chained_assignment = None
 
@@ -180,6 +176,38 @@ class Equity:
         df = df.assign(upr_vltd=(df.c < df.upr) & (df.h > df.upr))
         return df
 
+    def get_candles(self, param, tf):
+        try:
+            sleep(0.5)
+            lst_col = ["o", "h", "l", "c"]
+            empty_ohlc = pd.DataFrame(columns=lst_col, data=[[0, 0, 0, 0]])
+            ao = user.random_broker()
+            resp = ao.obj.getCandleData(param)
+            data = resp.get('data')
+            if data:
+                df = pd.DataFrame(columns=lst_dohlcv, data=data)
+                df.drop("v", inplace=True, axis=1)
+                times = lst_dohlcv[0]
+                df[times] = pd.to_datetime(df[times])
+                df = df.set_index("dtime")
+                dct = {
+                    "o": "first",
+                    "h": "max",
+                    "l": "min",
+                    "c": "last"
+                }
+                t = df.groupby(pd.Grouper(freq=tf)).agg(dct)
+                t.columns = lst_col
+                t = t.reset_index().rename(columns={'index': 'dtime'})
+                print(t.tail())
+                return t
+            else:
+                return empty_ohlc
+        except Exception as e:
+            print(f"{e} failed to get candles for {param['symboltoken']}")
+        else:
+            return df
+
     def get_keltner_2day(self):
         def get_candles_dump(symboltoken, fro, nto, mode="w"):
             try:
@@ -230,7 +258,6 @@ class Equity:
         print(f"{fro} to {nto}")
         for i, row in self.df.iterrows():
             df = get_candles_dump(row.symboltoken, fro, nto, mode="append")
-
         df_lstrows = pd.DataFrame()
         pkls = futil.get_files_with_extn("pkl", dpath + "pickle/")
         for pkl in pkls:
@@ -239,7 +266,7 @@ class Equity:
                                    df_sym['c'], 50, 5, 50)
             last_row = df_sym.iloc[-1]
             last_row['symbol'] = pkl[:-4]
-            last_row = last_row[['h', 'l', 'c', 'upr', 'symbol']]
+            last_row = last_row[['o', 'h', 'l', 'c', 'upr', 'symbol']]
             if df_lstrows.empty:
                 df_lstrows = last_row.to_frame().T
             else:
@@ -309,28 +336,58 @@ if __name__ == "__main__":
     print("KELTNER VIOLATED")
     csvfile = dpath + "5_upr_violated.csv"
     eqty.df = eqty.fltr_upr_vltd(eqty.df)
+    eqty.df['upr'] = eqty.df['upr'].apply(lambda x: round(x, 2))
+    eqty.df.drop(['is_valid', 'h_gr_pdh'], axis=1, inplace=True)
     df_trades = eqty.df.query('upr_vltd == True').copy()
-    df_trades = df_trades.filter(
-        items=['symbol', 'upr_vltd'], axis=1)
-    df_trades = df_trades.rename(columns={'upr_vltd': 'entry'})
+    df_trades = df_trades.filter(items=['symbol', 'c'], axis=1)
+    df_trades = df_trades.rename(columns={'c': 'close'})
+    df_trades['dtime'] = "09:20:00"
     print(eqty.df)
     print("TRADES")
     print(df_trades)
     eqty.df.to_csv(csvfile, index=False)
+    df_trades.to_csv(dpath + "6_trades.csv", index=False)
 
-    """
+    eqty.df = pd.read_csv(csvfile, header=0)
+    print("CALCULATE P&L")
     till = "10:00"
     df_ohlc = df_empty
-    fro = eqty.now.set(hour=9, minute=21).to_datetime_string()[:-3]
-    nto = eqty.now.set(hour=9, minute=25).to_datetime_string()[:-3]
+    fro = eqty.now.set(hour=9, minute=20).to_datetime_string()[:-3]
+    nto = eqty.now.set(hour=15, minute=20).to_datetime_string()[:-3]
     print(f"{fro} to {nto}")
+    param = {
+        "exchange": "NSE",
+        "interval": "FIVE_MINUTE",
+        "fromdate": fro,
+        "todate": nto,
+    }
     for i, row in eqty.df.iterrows():
-        df = eqty.get_ohlc(row.symboltoken, fro, nto, "5Min")
+        param["symboltoken"] = row.symboltoken
+        df = eqty.get_candles(param, "5Min")
         df['symbol'] = row.symbol
         if df_ohlc.empty:
             df_ohlc = df
         else:
             df_ohlc = pd.concat([df_ohlc, df], ignore_index=True)
-    df_cl = df_ohlc.filter(['symbol', 'c'+'0', 'l'+'0'])
-    eqty.df = pd.merge(eqty.df, df_cl, how='left', on='symbol')
-    """
+    df_ohlc.to_csv(dpath + "7_5min.csv")
+
+    csvfile = dpath + "7_5min.csv"
+    tick_df = pd.read_csv(csvfile, header=0)
+    tick_df = tick_df.filter(['symbol', 'dtime', 'c'])
+    tick_df = tick_df.rename(columns={'c': 'close'})
+
+    merged = pd.merge(eqty.df, tick_df, on='symbol')
+    filtered = merged[merged['close'] > merged['h']]
+    filtered['dtime'] = pd.to_datetime(filtered['dtime'])
+    start_time = pd.to_datetime('09:20').time()
+    end_time = pd.to_datetime('10:00').time()
+    filtered = filtered[(filtered['dtime'].dt.time >= start_time) & (
+        filtered['dtime'].dt.time <= end_time)]
+    result = filtered.groupby('symbol').agg({'dtime': 'min', 'close': 'first'})
+
+    csvfile = dpath + "6_trades.csv"
+    trades = pd.read_csv(csvfile, header=0)
+    trades.set_index('symbol', inplace=True)
+    new_trades = trades[~trades.index.isin(result.index)]
+    merged_trades = pd.concat([result, new_trades], axis=0)
+    print(merged_trades)

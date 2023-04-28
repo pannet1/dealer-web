@@ -238,6 +238,55 @@ async def get_bulk_modify(
     return jt.TemplateResponse("modify.html", ctx)
 
 
+@app.get("/pos_modify/", response_class=HTMLResponse)
+async def get_pos_modify(
+        request: Request,
+        exchange: str,
+        tradingsymbol: str,
+        netqty: int,
+        producttype: str,):
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    transactiontype = 'BUY' if netqty > 0 else "SELL"
+    subs = {
+        "exchange": exchange,
+        "tradingsymbol": tradingsymbol,
+        "transactiontype": transactiontype,
+        "producttype": producttype
+    }
+    mh, md, th, td = user.positions()
+    if len(th) > 0:
+        ords = []
+        for tr in td:
+            ords.append(dict(zip(th, tr)))
+        fltr = []
+        for ord in ords:
+            success = True
+            for k, v in subs.items():
+                if ord.get(k) != v:
+                    success = False
+                    break
+            if success:
+                fltr.append(ord)
+        if any(fltr):
+            fdata = []
+            for f in fltr:
+                fdata.append([f.get('client_name'),
+                              # f.get('orderid'),
+                              # f.get('price'),
+                              # f.get('triggerprice'),
+                              f.get('quantity')
+                              ])
+            ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
+    """
+    remv, flt_ltp = user.get_ltp(
+        subs['exchange'], subs['tradingsymbol'], subs['symboltoken'])
+    subs['price'] = flt_ltp[0][0]
+    subs['trigger'] = 0
+    ctx['subs'] = [subs]
+    """
+    return jt.TemplateResponse("modify.html", ctx)
+
+
 @ app.get("/orders", response_class=HTMLResponse)
 async def orders(request: Request):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
@@ -276,8 +325,15 @@ async def positions(request: Request):
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
+        for ord in td:
+            dct = dict(zip(th, ord))
+            url = '/pos_modify/?'
+            for k, v in dct.items():
+                url += f'{k}={v}&'
+            ord.append(url)
+            print(url)
         ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
+    return jt.TemplateResponse("positions.html", ctx)
 
 
 @ app.get("/new", response_class=HTMLResponse)
