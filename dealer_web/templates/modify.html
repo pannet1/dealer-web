@@ -8,15 +8,19 @@
  class="p-5 bg-red-300 w-full max-w-lg"
 {% endif %}
 >
+
+  <div class="btn-group lg">
+    <input type="radio" name="otype" value="1" data-title="LMT" class="btn" checked />
+    <input type="radio" name="otype" value="2" data-title="MKT" class="btn"  />
+    <input type="radio" name="otype" value="3" data-title="SL" class="btn" />
+    <input type="radio" name="otype" value="4" data-title="SL-M" class="btn" />
+  </div>
   <div class="form-control relative inline-block">
     <label class="label">
     <span class="label-text">Product</span>
     </label>
     <input type="text" name="producttype" class="input input-ghost" readonly=readonly style="width:49%"
     value={% if o.producttype |length>0 %} {{ o.producttype }}{% endif %}
- >
-   <input type="text" name="ordertype" class="input input-ghost float-right" readonly=readonly style="width:49%"
-    value='{% if o.ordertype |length>0 %} {{ o.ordertype }}{% endif %}'
  >
   <div class="form-control relative inline-block w-full">
     <label class="label">
@@ -58,10 +62,7 @@
       {% for td in data %}
     <tr>
         <td><input class="input-sm input" name="client_name" type='hidden' value='{{ td[0] }}'> {{ td[0] }}  </td>
-        <td><input class="input-sm input" name="orderid" type='hidden' value='{{ td[1] }}'>{{ td[1] }} </td>
-        <td><input class="input-sm input" type='hidden' value='{{ td[2] }}'> {{ td[2] }} /
-        <input class="input-sm input" type='hidden' value='{{ td[3] }}'>{{ td[3] }} </td>
-        <td><input style="width:5em" name="quantity" value='{{ td[4] }}'></td>
+        <td><input style="width:5em" name="quantity" value='{{ td[1] }}'></td>
       </tr>
       {% endfor %}
       {% endif %}

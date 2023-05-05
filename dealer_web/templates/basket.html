@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{%  block form  %}
+<form method='post' action='/orders/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
+  <div class="btn-group">
+    <input type="radio" name="ptype" value="1" data-title="NRML" class="btn" checked />
+    <input type="radio" name="ptype" value="2" data-title="MIS" class="btn"  />
+    <input type="radio" name="ptype" value="3" data-title="CNC" class="btn" />
+  </div>
+  <div class="btn-group lg:float-right">
+    <input type="radio" name="otype" value="1" data-title="LMT" class="btn" checked />
+    <input type="radio" name="otype" value="2" data-title="MKT" class="btn"  />
+    <input type="radio" name="otype" value="3" data-title="SL" class="btn" />
+    <input type="radio" name="otype" value="4" data-title="SL-M" class="btn" />
+  </div>
+  <div class="form-control autocomplete relative inline-block w-full">
+    <label class="label">
+      <span class="label-text">Trading Symbol</span>
+    </label>
+    <input id="symbol" name="symbol" type="text" class="input input-bordered" style="width:81%">
+    <input id="exchange" name="exchange" type="text" readonly="readonly" class="input input-ghost float-right" style="width:4.5rem" />
+    <input id="token" name="token" type="hidden" />
+  </div>
+  <div class="form-control relative inline-block">
+    <label class="label">
+      <span class="label-text">Price</span>
+      <span class="label-text">Trigger Price</span>
+    </label>
+    <input type="text" id="price" name="price" class="input input-bordered" style="width:49%"/>
+    <input type="text" id="trigger" name="trigger" class="input input-bordered float-right" style="width:49%"/>
+  </div>
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text-alt">Lot size:</span>
+      <span id="lotsize" class="label-text-alt"></span>
+    </label>
+  </div>
+<div class="form-control">
+  <label class="label cursor-pointer">
+    <span class="label-text text-lg">SELL</span>
+    <input id="txn" type="checkbox" name="txn" class="toggle toggle-lg bg-red-300 checked:bg-green-500"/>
+    
+    <span class="label-text text-lg">BUY</span>
+  </label>
+</div>
+{% endblock form %}
+
+{% block content %}
+  <table class="mx-auto table table-compact">
+    {% if th %}
+    <tr>
+      {% for k in th %}
+          <th>{{ k }}</th>
+      {% endfor %}
+      <th>qty</th>
+    </tr>
+      {% for tr in data %}
+    <tr>
+        <td>{{ tr[0] | int }}</td>
+        <td><input name="client_name" class="hidden" value='{{ tr[1] }}'>{{ tr[1] }}</td>
+        <td>
+          <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
+        </td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+
+    {% if mh %}
+    <tr>
+      {% for k in mh %}
+          <th>{{ k }}</th>
+      {% endfor %}
+      <th>qty</th>
+    </tr>
+      {% for tr in md %}
+    <tr>
+        {% for v in tr %}
+        {% if (v | int) >= 0 or (v | int) < 0   %}
+          <td>{{ v | int }}</td>
+        {% else %}
+        <td><input name="client_name[]" class="hidden" value='{{ v }}'>{{ v }}</td>
+        {% endif %}
+        {% endfor %}
+          <td>
+            <input name="qty[]" type="number" class="input input-primary input-bordered input-sm" min="0" value="0">
+          </td>
+      </tr>
+      {% endfor %}
+      {%  endif %}
+      <tr>
+        <td colspan="3">
+          <input type="button" 
+          class="btn btn-primary btn-outline btn-block" 
+          id="copyButton"
+          value="SEND"/>
+        </td>
+      </tr>
+    </table>
+</form>
+
+<table id="basket_table" class="mx-auto table table-compact">
+  <tr></tr>
+</table>
+
+{% endblock content %}

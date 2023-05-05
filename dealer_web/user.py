@@ -284,3 +284,15 @@ def get_token(row):
         return 0
     else:
         return token
+
+
+def get_tkn_fm_sym(sym):
+    try:
+        f = open(dumpfile)
+        data = json.load(f)
+        token = next((item.get("token")
+                     for item in data if item.get("symbol") == sym), 0)
+        f.close
+        return token
+    except Exception as e:
+        print(f"{e} occured while get_tkn_fm_sym")
