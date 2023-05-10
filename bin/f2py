@@ -1,4 +1,4 @@
-#!/home/pannet1/Programs/py/dealer-web/bin/python3
+#!/home/pannet1/Programs/py/dealer-web/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -75,7 +75,9 @@ async def post_basket(request: Request,
                       txn: Optional[str] = Form('off'), exchange: str = Form(),
                       producttype: str = Form(), otype: int = Form('0'),
                       price: float = Form(), trigger: float = Form()):
+   
     mh, md, th, td = [], [], [], []
+   
     for i in range(len(client_name)):
         if qty[i] > 0:
             txn_type = 'BUY' if txn == 'on' else 'SELL'
@@ -106,7 +108,6 @@ async def post_basket(request: Request,
                 "quantity": str(qty[i])
             }
             mh, md, th, td = user.order_place_by_user(client_name[i], params)
-
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -114,35 +115,45 @@ async def post_basket(request: Request,
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
-
 @app.post("/bulk_modify/")
-async def post_bulk_modify(request: Request, client_name: List[str],
+async def post_position_modify(request: Request, client_name: List[str],
                            orderid: List[str], quantity: List[str],
+                           txn_type: str = Form(),
                            exchange: str = Form(), symboltoken: str = Form(),
-                           tradingsymbol: str = Form(),
-                           ordertype: str = Form(),
+                           tradingsymbol: str = Form(), otype: int = Form('0'),
+                           producttype: str = Form(),
                            triggerprice: str = Form(),  price: str = Form()):
 
-    if ordertype == 'STOPLOSS_LIMIT':
+    mh, md, th, td = [], [], [], []
+
+    if otype == 1:
+        ordertype = 'LIMIT'
+        variety = 'NORMAL'
+    elif otype == 2:
+        ordertype = 'MARKET'
+        variety = 'NORMAL'
+    elif otype == 3:
+        ordertype = 'STOPLOSS_LIMIT'
         variety = 'STOPLOSS'
-    elif ordertype == 'STOPLOSS_MARKET':
+    elif otype == 4:
+        ordertype = 'STOPLOSS_MARKET'
         variety = 'STOPLOSS'
-    else:
-        variety = "NORMAL"
-    for i, v in enumerate(orderid):
+
+    for i, v in len(range(client_name)):
         params = {
-            'orderid': orderid[i],
-            'exchange': exchange,
-            'tradingsymbol': tradingsymbol,
             'variety': variety,
+            'tradingsymbol': tradingsymbol,
             'symboltoken': symboltoken,
-            'ordertype': f'{ordertype.strip()}',
+            "transactiontype": txn_type,
+            'exchange': exchange,
+            'ordertype': ordertype,
+            "producttype": producttype,
             'price': price,
             'quantity': quantity[i],
             'triggerprice': triggerprice,
             'duration': 'DAY'
         }
-        mh, md, th, td = user.order_modify_by_user(client_name[i], params)
+        mh, md, th, td = user.order_place_by_user(client_name[i], params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md

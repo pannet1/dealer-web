@@ -2,13 +2,13 @@
 {%  block form  %}
 {% for o in subs %}
 <form method='post' action='/bulk_modify' autocomplete="off"
-{% if o.transactiontype =='BUY'  %} {{ o.transactiontype }}
+{% if o.transactiontype =='BUY'  %}
  class="p-5 bg-green-500 w-full max-w-lg"
 {% else %}
  class="p-5 bg-red-300 w-full max-w-lg"
 {% endif %}
 >
-
+<input type="hidden" name="txn_type" value="{% o.transaciontype %}">
   <div class="btn-group lg">
     <input type="radio" name="otype" value="1" data-title="LMT" class="btn" checked />
     <input type="radio" name="otype" value="2" data-title="MKT" class="btn"  />
