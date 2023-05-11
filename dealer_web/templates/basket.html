@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {%  block form  %}
-<form method='post' action='/orders/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
+<notform id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
   <div class="btn-group">
     <input type="radio" name="ptype" value="1" data-title="NRML" class="btn" checked />
     <input type="radio" name="ptype" value="2" data-title="MIS" class="btn"  />
@@ -38,7 +38,6 @@
   <label class="label cursor-pointer">
     <span class="label-text text-lg">SELL</span>
     <input id="txn" type="checkbox" name="txn" class="toggle toggle-lg bg-red-300 checked:bg-green-500"/>
-    
     <span class="label-text text-lg">BUY</span>
   </label>
 </div>
@@ -95,10 +94,16 @@
         </td>
       </tr>
     </table>
+</notform>
+<form action="/post_basket/" method="POST">
+  <table class="mx-auto table table-compact">
+      <tbody id="basket_table">
+        <tfoot><td>
+          <input type="submit" 
+          class="btn btn-primary btn-outline btn-block" 
+          value="basket"/>
+          </td></tfoot>
+      </tbody>
+  </table>
 </form>
-
-<table id="basket_table" class="mx-auto table table-compact">
-  <tr></tr>
-</table>
-
 {% endblock content %}

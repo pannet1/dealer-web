@@ -68,52 +68,50 @@ async def post_orders(request: Request,
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.post("/basket/")
-async def post_basket(request: Request,
-                      qty: List[int], client_name: List[str],
-                      tradingsymbol: str = Form(), token: str = Form(),
-                      txn: Optional[str] = Form('off'), exchange: str = Form(),
-                      producttype: str = Form(), otype: int = Form('0'),
-                      price: float = Form(), trigger: float = Form()):
-   
-    mh, md, th, td = [], [], [], []
-   
-    for i in range(len(client_name)):
-        if qty[i] > 0:
-            txn_type = 'BUY' if txn == 'on' else 'SELL'
-            if otype == 1:
-                ordertype = 'LIMIT'
-                variety = 'NORMAL'
-            elif otype == 2:
-                ordertype = 'MARKET'
-                variety = 'NORMAL'
-            elif otype == 3:
-                ordertype = 'STOPLOSS_LIMIT'
-                variety = 'STOPLOSS'
-            elif otype == 4:
-                ordertype = 'STOPLOSS_MARKET'
-                variety = 'STOPLOSS'
+@app.post("/post_basket/")
+async def posted_basket(request: Request,
+    price: List[int], trigger: List[str]):
+    print("request received")
 
-            params = {
-                "variety": variety,
-                "tradingsymbol": tradingsymbol,
-                "symboltoken": token,
-                "transactiontype": txn_type,
-                "exchange": exchange,
-                "ordertype": ordertype,
-                "producttype": producttype,
-                "duration": "DAY",
-                "price": str(price),
-                "triggerprice": str(trigger),
-                "quantity": str(qty[i])
-            }
-            mh, md, th, td = user.order_place_by_user(client_name[i], params)
+    """
+    quantity: List[str], client_name: List[str],
+    transactiontype: List[str],exchange: List[str],
+    tradingsymbol: List[str], token: List[str],
+    ptype: List[str], otype: List[str],
+    """
+    mh, md, th, td = [], [], [], []
+    """
+    for i in range(len(price)):
+        variety = ""
+        if otype[i] == 'LIMIT':
+            variety = 'NORMAL'
+        elif otype[i] == 'MARKET':
+            variety = 'NORMAL'
+        elif otype[i] == 'STOPLOSS_LIMIT':
+            variety = 'STOPLOSS'
+        elif otype[i] == 'STOPLOSS_MARKET':
+            variety = 'STOPLOSS'
+        params = {
+            "variety": variety,
+            "tradingsymbol": tradingsymbol[i],
+            "symboltoken": token[i],
+            "transactiontype": transactiontype[i],
+            "exchange": exchange[i],
+            "ordertype": otype[i],
+            "producttype": ptype[i],
+            "duration": "DAY",
+            "price": price[i],
+            "triggerprice": trigger[i],
+            "quantity": quantity[i],
+        }
+        mh, md, th, td = user.order_place_by_user(client_name[i], params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
+    """
 
 @app.post("/bulk_modify/")
 async def post_position_modify(request: Request, client_name: List[str],
