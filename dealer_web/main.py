@@ -69,18 +69,12 @@ async def post_orders(request: Request,
 
 
 @app.post("/post_basket/")
-async def posted_basket(request: Request,
-    price: List[int], trigger: List[str]):
-    print("request received")
-
-    """
-    quantity: List[str], client_name: List[str],
-    transactiontype: List[str],exchange: List[str],
-    tradingsymbol: List[str], token: List[str],
-    ptype: List[str], otype: List[str],
-    """
+async def posted_basket(request: Request, price: List[str] = Form(), trigger: List[str] = Form(),
+                        quantity: List[str]= Form(), client_name: List[str] = Form(),
+                        transactiontype: List[str] = Form(),exchange: List[str] = Form(),
+                        tradingsymbol: List[str] = Form(),  token: List[str] = Form(),
+                        ptype: List[str]= Form(), otype: List[str] = Form() ):
     mh, md, th, td = [], [], [], []
-    """
     for i in range(len(price)):
         variety = ""
         if otype[i] == 'LIMIT':
@@ -91,6 +85,7 @@ async def posted_basket(request: Request,
             variety = 'STOPLOSS'
         elif otype[i] == 'STOPLOSS_MARKET':
             variety = 'STOPLOSS'
+
         params = {
             "variety": variety,
             "tradingsymbol": tradingsymbol[i],
@@ -111,7 +106,6 @@ async def posted_basket(request: Request,
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
-    """
 
 @app.post("/bulk_modify/")
 async def post_position_modify(request: Request, client_name: List[str],

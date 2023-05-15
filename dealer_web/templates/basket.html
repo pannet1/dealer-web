@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {%  block form  %}
-<notform id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
+<form id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
   <div class="btn-group">
     <input type="radio" name="ptype" value="1" data-title="NRML" class="btn" checked />
     <input type="radio" name="ptype" value="2" data-title="MIS" class="btn"  />
@@ -87,23 +87,26 @@
       {%  endif %}
       <tr>
         <td colspan="3">
-          <input type="button" 
-          class="btn btn-primary btn-outline btn-block" 
+          <input type="button"
+          class="btn btn-primary btn-outline btn-block"
           id="copyButton"
           value="SEND"/>
         </td>
       </tr>
     </table>
-</notform>
+</form>
+
+<div class="overflow-x-auto">
 <form action="/post_basket/" method="POST">
   <table class="mx-auto table table-compact">
       <tbody id="basket_table">
         <tfoot><td>
-          <input type="submit" 
-          class="btn btn-primary btn-outline btn-block" 
+          <input type="submit"
+          class="btn btn-primary btn-outline btn-block"
           value="basket"/>
           </td></tfoot>
       </tbody>
   </table>
 </form>
+</div>
 {% endblock content %}
