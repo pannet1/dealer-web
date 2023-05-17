@@ -9,3 +9,6 @@ xlrd
 pyotp
 jinja2
 orjson
+pandas
+smartapi-python
+websocket-client
