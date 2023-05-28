@@ -5,7 +5,8 @@ import json
 import random
 
 futil = Fileutils()
-users = futil.xls_to_dict("../../../confid/ao_users.xls")
+sec_dir = "../../../"
+users = futil.xls_to_dict(sec_dir + "ao_users.xls")
 ao = []
 
 
@@ -14,7 +15,7 @@ for user in users:
     if a.authenticate():
         ao.append(a)
 
-dumpfile = "../../../confid/symbols.json"
+dumpfile = sec_dir + "symbols.json"
 
 
 def random_broker() -> AngelOne:
@@ -129,11 +130,11 @@ def get_ltp(exch, sym, tkn):
 def get_symbols(search):
     f = open(dumpfile)
     data = json.load(f)
-    l = len(search)
-    if l > 0:
+    s_key = len(search)
+    if s_key > 0:
         j = []
         for i in data:
-            if i['symbol'][:l] == search.upper():
+            if i['symbol'][:s_key] == search.upper():
                 # ltp = get_ltp(i['exch_seg'], i['symbol'], i['token'])
                 # i['ltp'] = ltp[0]
                 j.append(i)

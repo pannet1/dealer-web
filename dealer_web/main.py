@@ -10,17 +10,21 @@ import uvicorn
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
-
 pages = ['home', 'margins', 'orders', 'trades', 'positions', 'new', 'basket']
 
 
 @app.post("/orders/")
 async def post_orders(request: Request,
-                      qty: List[int], client_name: List[str],
-                      symbol: str = Form(), token: str = Form(),
-                      txn: Optional[str] = Form('off'), exchange: str = Form(),
-                      ptype: int = Form('0'), otype: int = Form('0'),
-                      price: float = Form(), trigger: float = Form()):
+                      qty: List[int],
+                      client_name: List[str],
+                      symbol: str = Form(),
+                      token: str = Form(),
+                      txn: Optional[str] = Form('off'),
+                      exchange: str = Form(),
+                      ptype: int = Form('0'),
+                      otype: int = Form('0'),
+                      price: float = Form(),
+                      trigger: float = Form()):
     mh, md, th, td = [], [], [], []
     for i in range(len(client_name)):
         if qty[i] > 0:
@@ -69,11 +73,17 @@ async def post_orders(request: Request,
 
 
 @app.post("/post_basket/")
-async def posted_basket(request: Request, price: List[str] = Form(), trigger: List[str] = Form(),
-                        quantity: List[str]= Form(), client_name: List[str] = Form(),
-                        transactiontype: List[str] = Form(),exchange: List[str] = Form(),
-                        tradingsymbol: List[str] = Form(),  token: List[str] = Form(),
-                        ptype: List[str]= Form(), otype: List[str] = Form() ):
+async def posted_basket(request: Request,
+                        price: List[str] = Form(),
+                        trigger: List[str] = Form(),
+                        quantity: List[str] = Form(),
+                        client_name: List[str] = Form(),
+                        transactiontype: List[str] = Form(),
+                        exchange: List[str] = Form(),
+                        tradingsymbol: List[str] = Form(),
+                        token: List[str] = Form(),
+                        ptype: List[str] = Form(),
+                        otype: List[str] = Form()):
     mh, md, th, td = [], [], [], []
     for i in range(len(price)):
         variety = ""
@@ -107,14 +117,19 @@ async def posted_basket(request: Request, price: List[str] = Form(), trigger: Li
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
+
 @app.post("/bulk_modify/")
-async def post_position_modify(request: Request, client_name: List[str],
-                           orderid: List[str], quantity: List[str],
-                           txn_type: str = Form(),
-                           exchange: str = Form(), symboltoken: str = Form(),
-                           tradingsymbol: str = Form(), otype: int = Form('0'),
-                           producttype: str = Form(),
-                           triggerprice: str = Form(),  price: str = Form()):
+async def post_position_modify(request: Request,
+                               client_name: List[str],
+                               orderid: List[str],
+                               quantity: List[str],
+                               txn_type: str = Form(),
+                               exchange: str = Form(),
+                               symboltoken: str = Form(),
+                               tradingsymbol: str = Form(),
+                               otype: int = Form('0'),
+                               producttype: str = Form(),
+                               triggerprice: str = Form(),  price: str = Form()):
 
     mh, md, th, td = [], [], [], []
 
@@ -155,13 +170,18 @@ async def post_position_modify(request: Request, client_name: List[str],
 
 
 @app.post("/order_modify/")
-async def order_modify(request: Request, order_id: str = Form(),
-                       qty: int = Form(), client_name: str = Form(),
-                       symbol: str = Form(), token: str = Form(),
+async def order_modify(request: Request,
+                       order_id: str = Form(),
+                       qty: int = Form(),
+                       client_name: str = Form(),
+                       symbol: str = Form(),
+                       token: str = Form(),
                        txn: Optional[str] = Form('off'),
                        exchange: str = Form(),
-                       ptype: int = Form('0'), otype: int = Form('0'),
-                       price: float = Form(), trigger: float = Form()):
+                       ptype: int = Form('0'),
+                       otype: int = Form('0'),
+                       price: float = Form(),
+                       trigger: float = Form()):
 
     if otype == 1:
         ordertype = 'LIMIT'
@@ -214,8 +234,10 @@ async def home(request: Request):
 
 
 @app.get("/order_cancel/")
-async def order_cancel(request: Request, client_name: str,
-                       order_id: str, variety: str):
+async def order_cancel(request: Request,
+                       client_name: str,
+                       order_id: str,
+                       variety: str):
     mh, md, th, td = user.order_cancel(client_name, order_id, variety)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
@@ -358,10 +380,21 @@ async def get_pos_modify(
 
 @ app.get("/orders", response_class=HTMLResponse)
 async def orders(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    args = ['producttype', 'ordertype', 'price', 'triggerprice', 'quantity',
-            'tradingsymbol', 'transactiontype', 'orderid', 'status', 'text',
-            'exchange', 'symboltoken']
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    args = ['producttype',
+            'ordertype',
+            'price',
+            'triggerprice',
+            'quantity',
+            'tradingsymbol',
+            'transactiontype',
+            'orderid',
+            'status',
+            'text',
+            'exchange',
+            'symboltoken']
     mh, md, th, td = user.orders(args)
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -379,7 +412,9 @@ async def orders(request: Request):
 
 @ app.get("/trades", response_class=HTMLResponse)
 async def trades(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
     mh, md, th, td = user.trades()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -390,7 +425,9 @@ async def trades(request: Request):
 
 @ app.get("/positions", response_class=HTMLResponse)
 async def positions(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
     mh, md, th, td = user.positions()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -407,8 +444,11 @@ async def positions(request: Request):
 
 @ app.get("/new", response_class=HTMLResponse)
 async def new(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    args = ['client_name', 'net']
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    args = ['client_name',
+            'net']
     mh, md, th, td = user.margins(args)
     if any(mh):
         ctx['mh'], ctx['md'] = mh, md
@@ -419,8 +459,11 @@ async def new(request: Request):
 
 @app.get("/basket", response_class=HTMLResponse)
 async def basket(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    args = ['client_name', 'net']
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    args = ['client_name',
+            'net']
     mh, md, th, td = user.margins(args)
     if any(mh):
         ctx['mh'], ctx['md'] = mh, md
@@ -431,7 +474,9 @@ async def basket(request: Request):
 
 @ app.get("/margins", response_class=HTMLResponse)
 async def margins(request: Request):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
     mh, md, th, td = user.margins()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
