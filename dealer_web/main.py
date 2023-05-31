@@ -13,6 +13,7 @@ jt = Jinja2Templates(directory="templates")
 pages = ['home', 'margins', 'orders', 'trades', 'positions', 'new', 'basket']
 
 
+# POST methods
 @app.post("/orders/")
 async def post_orders(request: Request,
                       qty: List[int],
@@ -25,6 +26,9 @@ async def post_orders(request: Request,
                       otype: int = Form('0'),
                       price: float = Form(),
                       trigger: float = Form()):
+    """
+    places orders for all clients
+    """
     mh, md, th, td = [], [], [], []
     for i in range(len(client_name)):
         if qty[i] > 0:
@@ -48,7 +52,6 @@ async def post_orders(request: Request,
                 producttype = 'INTRADAY'
             elif ptype == 3:
                 producttype = 'DELIVERY'
-
             params = {
                 "variety": variety,
                 "tradingsymbol": symbol,
@@ -63,7 +66,6 @@ async def post_orders(request: Request,
                 "quantity": str(qty[i])
             }
             mh, md, th, td = user.order_place_by_user(client_name[i], params)
-
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -72,67 +74,23 @@ async def post_orders(request: Request,
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.post("/post_basket/")
-async def posted_basket(request: Request,
-                        price: List[str] = Form(),
-                        trigger: List[str] = Form(),
-                        quantity: List[str] = Form(),
-                        client_name: List[str] = Form(),
-                        transactiontype: List[str] = Form(),
-                        exchange: List[str] = Form(),
-                        tradingsymbol: List[str] = Form(),
-                        token: List[str] = Form(),
-                        ptype: List[str] = Form(),
-                        otype: List[str] = Form()):
+@app.post("/bulk_modified_order/")
+async def post_bulk_modified_order(request: Request,
+                                   client_name: List[str],
+                                   orderid: List[str],
+                                   quantity: List[str],
+                                   txn_type: str = Form(),
+                                   exchange: str = Form(),
+                                   symboltoken: str = Form(),
+                                   tradingsymbol: str = Form(),
+                                   otype: int = Form('0'),
+                                   producttype: str = Form(),
+                                   triggerprice: str = Form(),
+                                   price: str = Form()):
+    """
+    post modified orders in bulk
+    """
     mh, md, th, td = [], [], [], []
-    for i in range(len(price)):
-        variety = ""
-        if otype[i] == 'LIMIT':
-            variety = 'NORMAL'
-        elif otype[i] == 'MARKET':
-            variety = 'NORMAL'
-        elif otype[i] == 'STOPLOSS_LIMIT':
-            variety = 'STOPLOSS'
-        elif otype[i] == 'STOPLOSS_MARKET':
-            variety = 'STOPLOSS'
-
-        params = {
-            "variety": variety,
-            "tradingsymbol": tradingsymbol[i],
-            "symboltoken": token[i],
-            "transactiontype": transactiontype[i],
-            "exchange": exchange[i],
-            "ordertype": otype[i],
-            "producttype": ptype[i],
-            "duration": "DAY",
-            "price": price[i],
-            "triggerprice": trigger[i],
-            "quantity": quantity[i],
-        }
-        mh, md, th, td = user.order_place_by_user(client_name[i], params)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
-
-
-@app.post("/bulk_modify/")
-async def post_position_modify(request: Request,
-                               client_name: List[str],
-                               orderid: List[str],
-                               quantity: List[str],
-                               txn_type: str = Form(),
-                               exchange: str = Form(),
-                               symboltoken: str = Form(),
-                               tradingsymbol: str = Form(),
-                               otype: int = Form('0'),
-                               producttype: str = Form(),
-                               triggerprice: str = Form(),  price: str = Form()):
-
-    mh, md, th, td = [], [], [], []
-
     if otype == 1:
         ordertype = 'LIMIT'
         variety = 'NORMAL'
@@ -146,7 +104,7 @@ async def post_position_modify(request: Request,
         ordertype = 'STOPLOSS_MARKET'
         variety = 'STOPLOSS'
 
-    for i, v in len(range(client_name)):
+    for i in range(len(client_name)):
         params = {
             'variety': variety,
             'tradingsymbol': tradingsymbol,
@@ -182,7 +140,9 @@ async def order_modify(request: Request,
                        otype: int = Form('0'),
                        price: float = Form(),
                        trigger: float = Form()):
-
+    """
+    modify single order
+    """
     if otype == 1:
         ordertype = 'LIMIT'
         variety = 'NORMAL'
@@ -195,14 +155,12 @@ async def order_modify(request: Request,
     elif otype == 4:
         ordertype = 'STOPLOSS_MARKET'
         variety = 'STOPLOSS'
-
     if ptype == 1:
         producttype = 'CARRYFORWARD'
     elif ptype == 2:
         producttype = 'INTRADAY'
     elif ptype == 3:
         producttype = 'DELIVERY'
-
     params = {
         "orderid": order_id,
         "variety": variety,
@@ -225,14 +183,55 @@ async def order_modify(request: Request,
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/home", response_class=HTMLResponse)
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    user.contracts()
+@app.post("/post_basket/")
+async def posted_basket(request: Request,
+                        price: List[str] = Form(),
+                        trigger: List[str] = Form(),
+                        quantity: List[str] = Form(),
+                        client_name: List[str] = Form(),
+                        transactiontype: List[str] = Form(),
+                        exchange: List[str] = Form(),
+                        tradingsymbol: List[str] = Form(),
+                        token: List[str] = Form(),
+                        ptype: List[str] = Form(),
+                        otype: List[str] = Form()):
+    """
+    places basket orders
+    """
+    mh, md, th, td = [], [], [], []
+    for i in range(len(price)):
+        variety = ""
+        if otype[i] == 'LIMIT':
+            variety = 'NORMAL'
+        elif otype[i] == 'MARKET':
+            variety = 'NORMAL'
+        elif otype[i] == 'STOPLOSS_LIMIT':
+            variety = 'STOPLOSS'
+        elif otype[i] == 'STOPLOSS_MARKET':
+            variety = 'STOPLOSS'
+        params = {
+            "variety": variety,
+            "tradingsymbol": tradingsymbol[i],
+            "symboltoken": token[i],
+            "transactiontype": transactiontype[i],
+            "exchange": exchange[i],
+            "ordertype": otype[i],
+            "producttype": ptype[i],
+            "duration": "DAY",
+            "price": price[i],
+            "triggerprice": trigger[i],
+            "quantity": quantity[i],
+        }
+        mh, md, th, td = user.order_place_by_user(client_name[i], params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    if len(mh) > 0:
+        ctx['mh'], ctx['md'] = mh, md
+    if (len(th) > 0):
+        ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
 
+# GET methods
 @app.get("/order_cancel/")
 async def order_cancel(request: Request,
                        client_name: str,
@@ -259,8 +258,8 @@ async def mw(search):
     return data
 
 
-@app.get("/bulk_modify/", response_class=HTMLResponse)
-async def get_bulk_modify(
+@app.get("/bulk_modify_order/", response_class=HTMLResponse)
+async def get_bulk_modify_order(
         request: Request,
         exchange: str,
         tradingsymbol: str,
@@ -269,7 +268,9 @@ async def get_bulk_modify(
         producttype: str,
         status: str,
         ordertype: str):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
     subs = {
         "exchange": exchange,
         "tradingsymbol": tradingsymbol,
@@ -296,10 +297,11 @@ async def get_bulk_modify(
         if any(fltr):
             fdata = []
             for f in fltr:
+                print(f)
                 fdata.append([f.get('client_name'),
                               f.get('orderid'),
-                              f.get('price'),
-                              f.get('triggerprice'),
+                              str(f.get('price')) + "/" +
+                              str(f.get('triggerprice')),
                               f.get('quantity')
                               ])
             ctx['th'], ctx['data'] = ['client_name', 'orderid',
@@ -309,16 +311,15 @@ async def get_bulk_modify(
     subs['price'] = flt_ltp[0][0]
     subs['trigger'] = 0
     ctx['subs'] = [subs]
-    return jt.TemplateResponse("modify.html", ctx)
+    return jt.TemplateResponse("orders_modify.html", ctx)
 
 
-@app.get("/pos_modify/", response_class=HTMLResponse)
-async def get_pos_modify(
-        request: Request,
-        exchange: str,
-        tradingsymbol: str,
-        netqty: int,
-        producttype: str,):
+@app.get("/close_position_by_users/", response_class=HTMLResponse)
+async def get_close_position_by_users(request: Request,
+                                      exchange: str,
+                                      tradingsymbol: str,
+                                      netqty: int,
+                                      producttype: str,):
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     subs = {
         "exchange": exchange,
@@ -328,31 +329,31 @@ async def get_pos_modify(
     transaction_type = "SELL" if netqty > 0 else "BUY"
     mh, md, th, td = user.positions()
     if len(th) > 0:
-        ords = []
+        posn = []
         for tr in td:
-            ords.append(dict(zip(th, tr)))
-        print(ords)
+            posn.append(dict(zip(th, tr)))
+        print(posn)
         fltr = []
-        for ord in ords:
+        for pos in posn:
             success = True
             for k, v in subs.items():
                 if k == 'netqty':
-                    if v > 0 and ord.get(k) < 0:
+                    if v > 0 and pos.get(k) < 0:
                         success = False
                         break
-                    elif v < 0 and ord.get(k) > 0:
+                    elif v < 0 and pos.get(k) > 0:
                         success = False
                         break
-                    elif ord.get(k) == 0:
+                    elif pos.get(k) == 0:
                         success = False
                         break
-                elif ord.get(k) != v:
+                elif pos.get(k) != v:
                     success = False
                     print(f"False: {k}{v}")
                     break
             if success:
                 print(f"True: {k}{v}")
-                fltr.append(ord)
+                fltr.append(pos)
         if any(fltr):
             print(fltr)
             fdata = []
@@ -362,7 +363,6 @@ async def get_pos_modify(
                     abs(int(f.get('netqty')))
                 ])
             ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
-
     try:
         token = user.get_tkn_fm_sym(subs['tradingsymbol'])
         remv, flt_ltp = user.get_ltp(
@@ -375,7 +375,7 @@ async def get_pos_modify(
     except Exception as e:
         print(f"{e} in get_pos_modify")
     else:
-        return jt.TemplateResponse("modify.html", ctx)
+        return jt.TemplateResponse("positions_modify.html", ctx)
 
 
 @ app.get("/orders", response_class=HTMLResponse)
@@ -401,26 +401,13 @@ async def orders(request: Request):
     if (len(th) > 0):
         for ord in td:
             dct = dict(zip(th, ord))
-            url = '/bulk_modify/?'
+            url = '/bulk_modify_order/?'
             for k, v in dct.items():
                 url += f'{k}={v}&'
             ord.append(url)
             print(url)
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("orders.html", ctx)
-
-
-@ app.get("/trades", response_class=HTMLResponse)
-async def trades(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    mh, md, th, td = user.trades()
-    if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
 
 
 @ app.get("/positions", response_class=HTMLResponse)
@@ -434,7 +421,7 @@ async def positions(request: Request):
     if (len(th) > 0):
         for ord in td:
             dct = dict(zip(th, ord))
-            url = '/pos_modify/?'
+            url = '/close_position_by_users/?'
             for k, v in dct.items():
                 url += f'{k}={v}&'
             ord.append(url)
@@ -482,6 +469,27 @@ async def margins(request: Request):
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
+    return jt.TemplateResponse("table.html", ctx)
+
+
+@ app.get("/trades", response_class=HTMLResponse)
+async def trades(request: Request):
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    mh, md, th, td = user.trades()
+    if len(mh) > 0:
+        ctx['mh'], ctx['md'] = mh, md
+    if (len(th) > 0):
+        ctx['th'], ctx['data'] = th, td
+    return jt.TemplateResponse("table.html", ctx)
+
+
+@app.get("/home", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    user.contracts()
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     return jt.TemplateResponse("table.html", ctx)
 
 if __name__ == "__main__":

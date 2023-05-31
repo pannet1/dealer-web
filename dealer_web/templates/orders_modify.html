@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {%  block form  %}
 {% for o in subs %}
-<form method='post' action='/bulk_modify' autocomplete="off"
+<form method='post' action='/bulk_modified_order' autocomplete="off"
 {% if o.transactiontype =='BUY'  %}
  class="p-5 bg-green-500 w-full max-w-lg"
 {% else %}
  class="p-5 bg-red-300 w-full max-w-lg"
 {% endif %}
 >
-<input type="hidden" name="txn_type" value="{% o.transaciontype %}">
+<input type="hidden" name="txn_type" value="{{ o.transactiontype }}">
   <div class="btn-group lg">
     <input type="radio" name="otype" value="1" data-title="LMT" class="btn" checked />
     <input type="radio" name="otype" value="2" data-title="MKT" class="btn"  />
@@ -62,7 +62,10 @@
       {% for td in data %}
     <tr>
         <td><input class="input-sm input" name="client_name" type='hidden' value='{{ td[0] }}'> {{ td[0] }}  </td>
-        <td><input style="width:5em" name="quantity" value='{{ td[1] }}'></td>
+        <td><input style="width:10em" name="order_id" type='hidden'
+                                      value='{{ td[1] }}'>{{ td[1] }}</td>
+        <td>{{ td[2] }}</td>
+        <td><input style="width:5em" name="quantity" value='{{ td[3] }}'></td>
       </tr>
       {% endfor %}
       {% endif %}
