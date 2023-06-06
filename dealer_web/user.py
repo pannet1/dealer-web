@@ -6,6 +6,7 @@ import random
 
 futil = Fileutils()
 sec_dir = "../../../"
+dumpfile = sec_dir + "symbols.json"
 users = futil.xls_to_dict(sec_dir + "ao_users.xls")
 ao = []
 
@@ -14,8 +15,6 @@ for user in users:
     a = AngelOne(**user)
     if a.authenticate():
         ao.append(a)
-
-dumpfile = sec_dir + "symbols.json"
 
 
 def random_broker() -> AngelOne:
@@ -219,15 +218,15 @@ def order_place_by_user(client_name, kwargs):
     th, td, mh, md = [], [], [], []
     a = get_broker_by_id(client_name)
     resp = a.order_place(**kwargs)
-    print(resp)
-    lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
-    if 'message' in th1:
-        mh = th1
-        md += td1
-    else:
-        th = th1
-        td += td1
+    if resp:
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
     return mh, md, th, td
 
 
