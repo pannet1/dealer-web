@@ -82,21 +82,24 @@ def resp_to_lst(resp):
             'message': 'no response'
         }]
 
-    if any(resp):
-        # if 'message' in resp:
-        #    return [resp]
+    elif 'data' in resp:
+        if type(resp['data']) == list:
+            return resp['data']
+        elif resp['data'] is None:
+            return [{'message': 'no data'}]
+        else:
+            return [resp['data']]
 
-        if 'data' in resp:
-            if type(resp['data']) == list:
-                return resp['data']
-            elif type(resp['data']) == dict:
-                return [resp['data']]
-            elif resp['data'] is None:
-                return [{
-                    'message': 'no data'
-                }]
+    if isinstance(resp, (str, int)):
+        return [{'response': resp}]
+    elif isinstance(resp, dict):
+        return [resp]
+    elif isinstance(resp, list):
+        return resp
+
+    message = (f"unexpected response of type: {type(resp)}")
     return [{
-        'message': 'something unexpected happened'
+        'message': message
     }]
 
 

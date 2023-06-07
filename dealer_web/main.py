@@ -198,9 +198,9 @@ async def posted_basket(request: Request,
     """
     places basket orders
     """
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     mh, md, th, td = [], [], [], []
     for i in range(len(price)):
-        variety = ""
         if otype[i] == 'LIMIT':
             variety = 'NORMAL'
         elif otype[i] == 'MARKET':
@@ -223,11 +223,12 @@ async def posted_basket(request: Request,
             "quantity": quantity[i],
         }
         mh, md, th, td = user.order_place_by_user(client_name[i], params)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
+        if len(mh) > 0:
+            ctx['mh'] = mh
+            ctx['md'].extend(md)
+        if (len(th) > 0):
+            ctx['th'] = th
+            ctx.setdefault('data', []).extend(td)
     return jt.TemplateResponse("table.html", ctx)
 
 
@@ -449,8 +450,7 @@ async def basket(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
-    args = ['client_name',
-            'net']
+    args = ['client_name', 'net']
     mh, md, th, td = user.margins(args)
     if any(mh):
         ctx['mh'], ctx['md'] = mh, md
