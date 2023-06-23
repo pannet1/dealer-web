@@ -121,9 +121,9 @@ class Equity:
             print(df.tail(5))
             return df
 
-    def eval_perc_rule(self, df):
+    def eval_direction(self, df):
         print("EOD Data")
-        csvfile = dpath + "3_eod_data.csv"
+        csvfile = dpath + "3_direction.csv"
         # distance between low and pdh
         df["yday_perc"] = df.eval('(pdh-pdl)/pdl')
         df['dir'] = 0
@@ -134,12 +134,12 @@ class Equity:
         print(df.tail(5))
         return df
 
-    def eval_pdh_violated(self):
+    def apply_conditions(self, df):
         print("YESTERDAY CONDITIONS")
         csvfile = dpath + "4_yday_conditions.csv"
-        combined_condition = (self.df['yday_perc'] > PERC) | (
-            self.df['dir'] == 0)
-        df = self.df[~combined_condition]
+        combined_condition = (df['yday_perc'] > PERC) | (
+            df['dir'] == 0)
+        df = df[~combined_condition]
         df.to_csv(csvfile, index=False)
         df = pd.read_csv(csvfile, header=0)
         print(df.tail(5))
@@ -248,8 +248,8 @@ if __name__ == "__main__":
     eqty = Equity()
     eqty.df = eqty.set_symbols()
     eqty.df = eqty.get_eod_data()
-    eqty.df = eqty.eval_perc_rule(eqty.df)
-    eqty.df = eqty.eval_pdh_violated()
+    eqty.df = eqty.eval_direction(eqty.df)
+    eqty.df = eqty.apply_conditions(eqty.df)
 
     """
     print("KELTNER VIOLATED")
