@@ -36,8 +36,8 @@ class Equity:
 
     def set_symbols(self):
         try:
-            csvfile = "1_symtok.csv"
-            if futil.is_file_not_2day(dpath + csvfile) is not False:
+            csvfile = dpath + "1_symtok.csv"
+            if futil.is_file_not_2day(csvfile):
                 with open(cpath + "symbols.json", "rb") as ojsn:
                     data = orjson.loads(ojsn.read())
                 df_tok = pd.DataFrame.from_dict(
@@ -62,9 +62,10 @@ class Equity:
             print(df.tail(3))
             return df
 
-    def get_pdh(self):
-        def get_high(symboltoken, fro, nto):
+    def get_eod_data(self):
+        def _get_ohlc(symboltoken, fro, nto):
             try:
+                sleep(2)
                 ao = user.random_broker()
                 param = {
                     "exchange": "NSE",
@@ -75,74 +76,72 @@ class Equity:
                 }
                 resp = ao.obj.getCandleData(param)
                 data = resp.get('data', None)
-                if data:
-                    high = data[-1:][0][2]
-                    low = data[-1:][0][3]
-                sleep(2)
-                print(f"returning high {high} low {low}")
-                return [high, low]
+                if (
+                    data is not None
+                    and isinstance(data, list)
+                    and isinstance(data[-1:], list)
+                    and isinstance(data[-1:][0], list)
+                ):
+                    return data[-1:][0]
+                else:
+                    raise ValueError("data is 0")
+            except ValueError as ve:
+                print(
+                    f"ValueError: {str(ve)} while getting high\nSleeping for {self.sleep} sec(s)")
             except Exception as e:
-                print(f"{e} while getting high \n sleeping for {self.sleep} sec(s)")
+                print(
+                    f"{str(e)} while getting high \n sleeping for {self.sleep} sec(s)")
                 return 0
 
         try:
             fro = self.max.set(hour=9, minute=14).to_datetime_string()[:-3]
             nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
             print(f"getting PDH {fro} to {nto}")
-            csvfile = "2_pdh.csv"
-            if futil.is_file_not_2day(dpath + csvfile) is not False:
+            csvfile = dpath + "2_eod_data.csv"
+            if futil.is_file_not_2day(csvfile):
                 while (not self.df.query("pdh==0").empty) and (self.sleep < 15):
                     df_cp = self.df.query("pdh==0").copy()
                     for i, row in df_cp.iterrows():
-                        lst = get_high(row.symboltoken, fro, nto)
-                        self.df.at[i, 'pdh'] = lst[0]
-                        self.df.at[i, 'pdl'] = lst[1]
+                        lst = _get_ohlc(row.symboltoken, fro, nto)
+                        self.df.at[i, 'pdo'] = lst[1]
+                        self.df.at[i, 'pdh'] = lst[2]
+                        self.df.at[i, 'pdl'] = lst[3]
+                        self.df.at[i, 'pdc'] = lst[4]
+                        print(row.symbol, str(lst))
                     self.sleep += 1
                 self.sleep = 1
                 df = self.df.query("pdh>0")
-                df.to_csv(dpath + csvfile, index=False)
+                df.to_csv(csvfile, index=False)
             else:
-                df = pd.read_csv(dpath + csvfile, header=0)
+                df = pd.read_csv(csvfile, header=0)
         except Exception as e:
-            print(f"{e} while get_pdh")
+            print(f"{e} while get_eod_data")
             SystemExit()
         else:
             print(df.tail(5))
             return df
 
     def eval_perc_rule(self, df):
-        print("PERCENTAGE RULE")
-        csvfile = dpath + "3_pct_rule.csv"
-        # distance between low and pdh    
+        print("EOD Data")
+        csvfile = dpath + "3_eod_data.csv"
+        # distance between low and pdh
         df["yday_perc"] = df.eval('(pdh-pdl)/pdl')
         df['dir'] = 0
         # Update 'dir' column based on conditions
-        df.loc[df['pdh'] > df['pdl'], 'dir'] = 1
-        df.loc[df['pdh'] < df['pdl'], 'dir'] = -1
-        # percentage rule on 1st Min candle
-        """
-        str_eval = f"lminuspdh / pdl <={PERC}"
-        df["is_valid"] = df.eval(str_eval)
-        df = df.query("is_valid==True")
-        df.drop(
-            ['lminuspdh', 'o', 'h', 'l', 'c'],
-            inplace=True, axis=1)
-        """
+        df.loc[df['pdc'] > df['pdo'], 'dir'] = -1
+        df.loc[df['pdc'] < df['pdo'], 'dir'] = 1
         df.to_csv(csvfile, index=False)
         print(df.tail(5))
         return df
 
     def eval_pdh_violated(self):
-        print("PDH VIOLATED")
-        csvfile = dpath + "4_pdh_violated.csv"
-        if futil.is_file_not_2day(csvfile) is not False:
-            df = self.df.copy()
-            df = df.assign(h_gr_pdh=df.h > df.pdh)
-            df = df.query("h_gr_pdh==True")
-            df['is_valid'] = True
-            df.to_csv(csvfile, index=False)
-        else:
-            df = pd.read_csv(csvfile, header=0)
+        print("YESTERDAY CONDITIONS")
+        csvfile = dpath + "4_yday_conditions.csv"
+        combined_condition = (self.df['yday_perc'] > PERC) | (
+            self.df['dir'] == 0)
+        df = self.df[~combined_condition]
+        df.to_csv(csvfile, index=False)
+        df = pd.read_csv(csvfile, header=0)
         print(df.tail(5))
         return df
 
@@ -225,75 +224,6 @@ class Equity:
         else:
             return df
 
-    def get_keltner_2day(self):
-        def get_candles_dump(symboltoken, fro, nto, mode="w"):
-            try:
-                ao = user.random_broker()
-                param = {
-                    "exchange": "NSE",
-                    "symboltoken": symboltoken,
-                    "interval": "FIVE_MINUTE",
-                    "fromdate": fro,
-                    "todate": nto,
-                }
-                resp = ao.obj.getCandleData(param)
-                sleep(0.5)
-                if resp.get('data'):
-                    data = resp.get('data')
-                    df = pd.DataFrame(columns=lst_dohlcv, data=data)
-                    df.drop("v", inplace=True, axis=1)
-                    times = lst_dohlcv[0]
-                    df[times] = pd.to_datetime(df[times])
-                    df = df.set_index("dtime")
-                    if mode == "w":
-                        df.to_pickle(f"{dpath}pickle/{row.symbol}.pkl")
-                    else:
-                        pkl_df = pd.read_pickle(
-                            f"{dpath}pickle/{row.symbol}.pkl")
-                        df = pd.concat([pkl_df, df.iloc[[0]]])
-                        df.to_pickle(f"{dpath}pickle/{row.symbol}.pkl")
-                    return df
-            except Exception as e:
-                print(e)
-
-        print("GET KELTNER")
-        empty_symb = []
-        fro = self.yday.set(hour=9, minute=14).to_datetime_string()[:-3]
-        nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
-        print(f"{fro} to {nto}")
-        for i, row in self.df.iterrows():
-            df = get_candles_dump(row.symboltoken, fro, nto)
-            if df.empty:
-                empty_symb.append(row.symboltoken)
-        if len(empty_symb) > 0:
-            print(
-                f"unable to get KELTNER for following symbols \n {empty_symb}")
-
-        print("GETTING KELTNER CHANNEL BANDS FOR TODAY")
-        fro = self.now.set(hour=9, minute=14).to_datetime_string()[:-3]
-        nto = self.now.set(hour=9, minute=19).to_datetime_string()[:-3]
-        print(f"{fro} to {nto}")
-        for i, row in self.df.iterrows():
-            df = get_candles_dump(row.symboltoken, fro, nto, mode="append")
-        df_lstrows = pd.DataFrame()
-        pkls = futil.get_files_with_extn("pkl", dpath + "pickle/")
-        for pkl in pkls:
-            df_sym = pd.read_pickle(dpath + "pickle/" + pkl)
-            df_sym['upr'] = get_kc(df_sym['h'], df_sym['l'],
-                                   df_sym['c'], 50, 5, 50)
-            last_row = df_sym.iloc[-1]
-            last_row['symbol'] = pkl[:-4]
-            last_row = last_row[['o', 'h', 'l', 'c', 'upr', 'symbol']]
-            if df_lstrows.empty:
-                df_lstrows = last_row.to_frame().T
-            else:
-                df_lstrows = pd.concat([df_lstrows, last_row.to_frame().T])
-            df_lstrows = df_lstrows.reset_index(drop=True)
-            df_sym.to_csv(kpath + pkl[:-4] + ".csv")
-        df = pd.merge(self.df, df_lstrows, how='left', on=['symbol'])
-        print(df.tail(5))
-        return df
-
     def place_order(symbol, ohlc):
         df = pd.DataFrame.from_dict(ohlc)
         df['Datetime'] = pd.to_datetime(df['Datetime'], unit='ms')
@@ -317,25 +247,9 @@ class Equity:
 if __name__ == "__main__":
     eqty = Equity()
     eqty.df = eqty.set_symbols()
-    eqty.df = eqty.get_pdh()
-
-    """
-    fro = eqty.now.set(hour=9, minute=14).to_datetime_string()[:-3]
-    nto = eqty.now.set(hour=9, minute=19).to_datetime_string()[:-3]
-    print(f"checking {PERC}%{fro} to {nto}")
-    df_ohlc = pd.DataFrame()
-    for i, row in eqty.df.iterrows():
-        df = eqty.get_ohlc(row.symboltoken, fro, nto, "1Min")
-        df['symbol'] = row.symbol
-        if df_ohlc.empty:
-            df_ohlc = df
-        else:
-            df_ohlc = pd.concat([df_ohlc, df], ignore_index=True)
-        # sleep(eqty.sleep)
-    """
+    eqty.df = eqty.get_eod_data()
     eqty.df = eqty.eval_perc_rule(eqty.df)
-    # eqty.df = eqty.get_keltner_2day()
-    # eqty.df = eqty.eval_pdh_violated()
+    eqty.df = eqty.eval_pdh_violated()
 
     """
     print("KELTNER VIOLATED")
