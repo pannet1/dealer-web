@@ -12,6 +12,10 @@ ao = []
 
 
 for user in users:
+    user.pop('multiplier')
+    user.pop('max_loss')
+    user.pop('target')
+    user.pop('disabled')
     a = AngelOne(**user)
     if a.authenticate():
         ao.append(a)

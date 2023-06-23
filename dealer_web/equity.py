@@ -4,19 +4,20 @@ import pendulum
 import concurrent.futures as cf
 import user
 from toolkit.fileutils import Fileutils
+from toolkit.utilities import Utilities
 from time import sleep
 from keltner import get_kc
 
 # user preferences
-PERC = 0.01
+PERC = 0.03
 TRADE_DAY_TMINUS = 2
 YESTERDAY_TMINUS = 1
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
 df_empty = pd.DataFrame()
-fpath = "../../"
-cpath = fpath + "confid/"
+fpath = "../../../"
+cpath = fpath
 dpath = fpath + "data/"
 kpath = dpath + "keltner/"
 
@@ -76,13 +77,12 @@ class Equity:
                 data = resp.get('data', None)
                 if data:
                     high = data[-1:][0][2]
-                # self.sleep = 1
-                print(f"returning high {high}")
-                return high
+                    low = data[-1:][0][3]
+                sleep(2)
+                print(f"returning high {high} low {low}")
+                return [high, low]
             except Exception as e:
                 print(f"{e} while getting high \n sleeping for {self.sleep} sec(s)")
-                sleep(self.sleep)
-                self.sleep += 1
                 return 0
 
         try:
@@ -94,8 +94,9 @@ class Equity:
                 while (not self.df.query("pdh==0").empty) and (self.sleep < 15):
                     df_cp = self.df.query("pdh==0").copy()
                     for i, row in df_cp.iterrows():
-                        self.df.loc[self.df.symbol == row.symbol,
-                                    "pdh"] = get_high(row.symboltoken, fro, nto)
+                        lst = get_high(row.symboltoken, fro, nto)
+                        self.df.at[i, 'pdh'] = lst[0]
+                        self.df.at[i, 'pdl'] = lst[1]
                     self.sleep += 1
                 self.sleep = 1
                 df = self.df.query("pdh>0")
@@ -108,6 +109,42 @@ class Equity:
         else:
             print(df.tail(5))
             return df
+
+    def eval_perc_rule(self, df):
+        print("PERCENTAGE RULE")
+        csvfile = dpath + "3_pct_rule.csv"
+        # distance between low and pdh    
+        df["yday_perc"] = df.eval('(pdh-pdl)/pdl')
+        df['dir'] = 0
+        # Update 'dir' column based on conditions
+        df.loc[df['pdh'] > df['pdl'], 'dir'] = 1
+        df.loc[df['pdh'] < df['pdl'], 'dir'] = -1
+        # percentage rule on 1st Min candle
+        """
+        str_eval = f"lminuspdh / pdl <={PERC}"
+        df["is_valid"] = df.eval(str_eval)
+        df = df.query("is_valid==True")
+        df.drop(
+            ['lminuspdh', 'o', 'h', 'l', 'c'],
+            inplace=True, axis=1)
+        """
+        df.to_csv(csvfile, index=False)
+        print(df.tail(5))
+        return df
+
+    def eval_pdh_violated(self):
+        print("PDH VIOLATED")
+        csvfile = dpath + "4_pdh_violated.csv"
+        if futil.is_file_not_2day(csvfile) is not False:
+            df = self.df.copy()
+            df = df.assign(h_gr_pdh=df.h > df.pdh)
+            df = df.query("h_gr_pdh==True")
+            df['is_valid'] = True
+            df.to_csv(csvfile, index=False)
+        else:
+            df = pd.read_csv(csvfile, header=0)
+        print(df.tail(5))
+        return df
 
     def get_ohlc(self, symboltoken, fro, nto, tf):
         try:
@@ -145,26 +182,6 @@ class Equity:
         except Exception as e:
             print(f"{e} while getting ohlc")
             return empty_ohlc
-
-    def eval_perc_rule(self, df_ohlc):
-        print("PERCENTAGE RULE")
-        csvfile = dpath + "3_pct_rule.csv"
-        if futil.is_file_not_2day(csvfile) is not False:
-            df = self.df.merge(df_ohlc, how="left", on=['symbol'])
-            # distance between low and pdh
-            df["lminuspdh"] = df.eval("pdh - l")
-            # percentage rule on 1st Min candle
-            str_eval = f"lminuspdh / l <={PERC}"
-            df["is_valid"] = df.eval(str_eval)
-            df = df.query("is_valid==True")
-            df.drop(
-                ['lminuspdh', 'o', 'h', 'l', 'c'],
-                inplace=True, axis=1)
-            df.to_csv(csvfile, index=False)
-        else:
-            df = pd.read_csv(csvfile, header=0)
-        print(df.tail(5))
-        return df
 
     def is_low_broken(self, df):
         if df['Low'][0] < df['Low'].min():
@@ -277,20 +294,6 @@ class Equity:
         print(df.tail(5))
         return df
 
-    def eval_pdh_violated(self):
-        print("PDH VIOLATED")
-        csvfile = dpath + "4_pdh_violated.csv"
-        if futil.is_file_not_2day(csvfile) is not False:
-            df = self.df.copy()
-            df = df.assign(h_gr_pdh=df.h > df.pdh)
-            df = df.query("h_gr_pdh==True")
-            df['is_valid'] = True
-            df.to_csv(csvfile, index=False)
-        else:
-            df = pd.read_csv(csvfile, header=0)
-        print(df.tail(5))
-        return df
-
     def place_order(symbol, ohlc):
         df = pd.DataFrame.from_dict(ohlc)
         df['Datetime'] = pd.to_datetime(df['Datetime'], unit='ms')
@@ -308,7 +311,7 @@ class Equity:
         with cf.ThreadPoolExecutor() as executor:
             for symbol in stocks:
                 ohlc = ohlc_data.get(symbol)
-                executor.submit(place_order, symbol, ohlc)
+                # executor.submit(place_order, symbol, ohlc)
 
 
 if __name__ == "__main__":
@@ -316,6 +319,7 @@ if __name__ == "__main__":
     eqty.df = eqty.set_symbols()
     eqty.df = eqty.get_pdh()
 
+    """
     fro = eqty.now.set(hour=9, minute=14).to_datetime_string()[:-3]
     nto = eqty.now.set(hour=9, minute=19).to_datetime_string()[:-3]
     print(f"checking {PERC}%{fro} to {nto}")
@@ -328,11 +332,12 @@ if __name__ == "__main__":
         else:
             df_ohlc = pd.concat([df_ohlc, df], ignore_index=True)
         # sleep(eqty.sleep)
+    """
+    eqty.df = eqty.eval_perc_rule(eqty.df)
+    # eqty.df = eqty.get_keltner_2day()
+    # eqty.df = eqty.eval_pdh_violated()
 
-    eqty.df = eqty.eval_perc_rule(df_ohlc)
-    eqty.df = eqty.get_keltner_2day()
-    eqty.df = eqty.eval_pdh_violated()
-
+    """
     print("KELTNER VIOLATED")
     csvfile = dpath + "5_upr_violated.csv"
     eqty.df = eqty.fltr_upr_vltd(eqty.df)
@@ -391,3 +396,4 @@ if __name__ == "__main__":
     new_trades = trades[~trades.index.isin(result.index)]
     merged_trades = pd.concat([result, new_trades], axis=0)
     print(merged_trades)
+    """
