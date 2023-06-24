@@ -6,21 +6,19 @@ import user
 from toolkit.fileutils import Fileutils
 from toolkit.utilities import Utilities
 from time import sleep
-from keltner import get_kc
+import numpy as np
 
 # user preferences
 PERC = 0.03
-TRADE_DAY_TMINUS = 2
-YESTERDAY_TMINUS = 1
+YESTERDAY_TMINUS = 2
+TRADE_DAY_TMINUS = 1
+MODE_TRADE = 0
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
 df_empty = pd.DataFrame()
 fpath = "../../../"
-cpath = fpath
 dpath = fpath + "data/"
-kpath = dpath + "keltner/"
-
 pd.options.mode.chained_assignment = None
 
 
@@ -34,11 +32,20 @@ class Equity:
         self.yday = pendulum.now().subtract(days=YESTERDAY_TMINUS)
         self.now = pendulum.now().subtract(days=TRADE_DAY_TMINUS)
 
+    def is_mode_trades(self, csv):
+        # testing mode
+        if MODE_TRADE == 0:
+            return True
+        # file needs modification
+        elif futil.is_file_not_2day(csv):
+            return True
+        return False
+
     def set_symbols(self):
         try:
             csvfile = dpath + "1_symtok.csv"
-            if futil.is_file_not_2day(csvfile):
-                with open(cpath + "symbols.json", "rb") as ojsn:
+            if self.is_mode_trades(csvfile):
+                with open(fpath + "symbols.json", "rb") as ojsn:
                     data = orjson.loads(ojsn.read())
                 df_tok = pd.DataFrame.from_dict(
                     data)
@@ -52,9 +59,9 @@ class Equity:
                 df_sym.drop('enabled', inplace=True, axis=1)
                 df = df_sym.merge(df_tok, how="left", on="symbol")
                 df['pdh'] = 0
-                df.to_csv(dpath + csvfile, index=False)
+                df.to_csv(csvfile, index=False)
             else:
-                df = pd.read_csv(dpath + csvfile, header=0)
+                df = pd.read_csv(csvfile, header=0)
         except Exception as e:
             print(f"{e} while set_symbols \n")
             SystemExit()
@@ -62,37 +69,32 @@ class Equity:
             print(df.tail(3))
             return df
 
-    def get_eod_data(self):
-        def _get_ohlc(symboltoken, fro, nto):
-            try:
-                sleep(2)
-                ao = user.random_broker()
-                param = {
-                    "exchange": "NSE",
-                    "symboltoken": symboltoken,
-                    "interval": "ONE_DAY",
-                    "fromdate": fro,
-                    "todate": nto,
-                }
-                resp = ao.obj.getCandleData(param)
-                data = resp.get('data', None)
-                if (
-                    data is not None
-                    and isinstance(data, list)
-                    and isinstance(data[-1:], list)
-                    and isinstance(data[-1:][0], list)
-                ):
-                    return data[-1:][0]
-                else:
-                    raise ValueError("data is 0")
-            except ValueError as ve:
-                print(
-                    f"ValueError: {str(ve)} while getting high\nSleeping for {self.sleep} sec(s)")
-            except Exception as e:
-                print(
-                    f"{str(e)} while getting high \n sleeping for {self.sleep} sec(s)")
+    def _get_ohlc(self, **kwargs):
+        try:
+            sleep(1)
+            ao = user.random_broker()
+            param = {
+                "exchange": "NSE",
+            }
+            t = kwargs.pop('tminus', 0)
+            param.update(kwargs)
+            resp = ao.obj.getCandleData(param)
+            data = resp.get('data', None)
+            if (
+                data is not None
+                and isinstance(data, list)
+                and isinstance(data[t:], list)
+                and isinstance(data[t:][0], list)
+            ):
+                return data[t:][0]
+            else:
                 return 0
+        except Exception as e:
+            print(
+                f"{str(e)} while ohlc \n sleeping for {self.sleep} sec(s)")
+            return 0
 
+    def get_eod_data(self):
         try:
             fro = self.max.set(hour=9, minute=14).to_datetime_string()[:-3]
             nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
@@ -102,12 +104,22 @@ class Equity:
                 while (not self.df.query("pdh==0").empty) and (self.sleep < 15):
                     df_cp = self.df.query("pdh==0").copy()
                     for i, row in df_cp.iterrows():
-                        lst = _get_ohlc(row.symboltoken, fro, nto)
-                        self.df.at[i, 'pdo'] = lst[1]
-                        self.df.at[i, 'pdh'] = lst[2]
-                        self.df.at[i, 'pdl'] = lst[3]
-                        self.df.at[i, 'pdc'] = lst[4]
-                        print(row.symbol, str(lst))
+                        kwargs = {
+                            'symboltoken': row.symboltoken,
+                            'fromdate': fro,
+                            'todate': nto,
+                            'interval': 'ONE_DAY',
+                            'tminus': 1
+                        }
+                        lst = self._get_ohlc(**kwargs)
+                        if isinstance(lst, list):
+                            self.df.at[i, 'pdo'] = lst[1]
+                            self.df.at[i, 'pdh'] = lst[2]
+                            self.df.at[i, 'pdl'] = lst[3]
+                            self.df.at[i, 'pdc'] = lst[4]
+                            print(row.symbol, str(lst))
+                        else:
+                            self.df.at[i, 'pdh'] = 0
                     self.sleep += 1
                 self.sleep = 1
                 df = self.df.query("pdh>0")
@@ -250,14 +262,33 @@ if __name__ == "__main__":
     eqty.df = eqty.get_eod_data()
     eqty.df = eqty.eval_direction(eqty.df)
     eqty.df = eqty.apply_conditions(eqty.df)
-
     """
-    print("KELTNER VIOLATED")
-    csvfile = dpath + "5_upr_violated.csv"
-    eqty.df = eqty.fltr_upr_vltd(eqty.df)
-    eqty.df['upr'] = eqty.df['upr'].apply(lambda x: round(x, 2))
-    eqty.df.drop(['is_valid', 'h_gr_pdh'], axis=1, inplace=True)
-    df_trades = eqty.df.query('upr_vltd == True').copy()
+    GET TODAY'S DATA
+    """
+    csvfile = dpath + "6_final.csv"
+    fro = eqty.now.set(hour=9, minute=15).to_datetime_string()[:-3]
+    nto = eqty.now.set(hour=9, minute=20).to_datetime_string()[:-3]
+    print(f"{fro} to {nto}")
+    param = {
+        "exchange": "NSE",
+        "interval": "FIVE_MINUTE",
+        "fromdate": fro,
+        "todate": nto,
+        "tminus": 0,
+    }
+    df = eqty.df.copy()
+    for i, row in eqty.df.iterrows():
+        param["symboltoken"] = row.symboltoken
+        lst = eqty._get_ohlc(**param)
+        if isinstance(lst, list):
+            df.at[i, 'open'] = lst[1]
+    df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
+                          df['pdh'], (df['pdl'] - df['open']) / df['open'])
+    offshoots = df['perc'] > 0.03
+    df = df[~offshoots]
+    df.to_csv(csvfile, index=False)
+    print(df.tail())
+    """
     df_trades = df_trades.filter(items=['symbol', 'c'], axis=1)
     df_trades = df_trades.rename(columns={'c': 'close'})
     df_trades['dtime'] = "09:20:00"
@@ -271,24 +302,6 @@ if __name__ == "__main__":
     print("CALCULATE P&L")
     till = "10:00"
     df_ohlc = df_empty
-    fro = eqty.now.set(hour=9, minute=20).to_datetime_string()[:-3]
-    nto = eqty.now.set(hour=15, minute=20).to_datetime_string()[:-3]
-    print(f"{fro} to {nto}")
-    param = {
-        "exchange": "NSE",
-        "interval": "FIVE_MINUTE",
-        "fromdate": fro,
-        "todate": nto,
-    }
-    for i, row in eqty.df.iterrows():
-        param["symboltoken"] = row.symboltoken
-        df = eqty.get_candles(param, "5Min")
-        df['symbol'] = row.symbol
-        if df_ohlc.empty:
-            df_ohlc = df
-        else:
-            df_ohlc = pd.concat([df_ohlc, df], ignore_index=True)
-    df_ohlc.to_csv(dpath + "7_5min.csv")
 
     csvfile = dpath + "7_5min.csv"
     tick_df = pd.read_csv(csvfile, header=0)
