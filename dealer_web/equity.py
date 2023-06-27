@@ -12,10 +12,14 @@ import user
 # user preferences
 Y_PERC = 0.03
 T_PERC = 0.01
-MODE_TRADE = 0
-
-YESTERDAY_TMINUS = 3
-TRADE_DAY_TMINUS = 2
+MIN_PRC = 100
+MAX_PRC = 10000
+GAPITAL = 100000
+YESTERDAY_TMINUS = 1
+TRADE_DAY_TMINUS = 0
+ACCOUNT = "MAHESHKAATH"
+BUFFER = 0.01
+MODE_TRADE = 1
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
@@ -24,48 +28,52 @@ fpath = "../../../"
 dpath = fpath + "data/"
 pd.options.mode.chained_assignment = None
 tutils = Utilities()
+executor = cf.ThreadPoolExecutor()
 
 
 class Equity:
 
     def __init__(self):
+        print("script started at {pendulum.now()}")
         user.contracts()
         self.df = pd.DataFrame()
         self.max = pendulum.now().subtract(days=9)
         self.yday = pendulum.now().subtract(days=YESTERDAY_TMINUS)
         self.now = pendulum.now().subtract(days=TRADE_DAY_TMINUS)
+        self.count = 0
 
-    def is_mode_trades(self, csv):
-        # testing mode
-        if MODE_TRADE == 0 and futil.is_file_not_2day(csv):
+    def is_run(self, csv):
+        """
+        if BACKTESTING mode or file written only yesterday
+        """
+        if MODE_TRADE == 1 or futil.is_file_not_2day(csv):
+            print(f"going to generate {csv}")
             return True
+        print(f"reading {csv}")
         return False
 
     def set_symbols(self):
         try:
             csvfile = dpath + "1_symtok.csv"
-            if self.is_mode_trades(csvfile):
-                with open(fpath + "symbols.json", "rb") as ojsn:
-                    data = orjson.loads(ojsn.read())
-                df_tok = pd.DataFrame.from_dict(
-                    data)
-                columns = ["token", "symbol"]
-                df_tok = df_tok.query("exch_seg=='NSE'")[columns].rename(
-                    columns={"token": "symboltoken"})
-                df_sym = futil.get_df_fm_csv(
-                    dpath, "nifty_200", ["symbol", "enabled"])
-                df_sym.dropna(inplace=True)
-                df_sym.drop('enabled', inplace=True, axis=1)
-                df = df_sym.merge(df_tok, how="left", on="symbol")
-                df['pdh'] = 0
-                df.to_csv(csvfile, index=False)
-            else:
-                df = pd.read_csv(csvfile, header=0)
+            with open(fpath + "symbols.json", "rb") as ojsn:
+                data = orjson.loads(ojsn.read())
+            df_tok = pd.DataFrame.from_dict(
+                data)
+            columns = ["token", "symbol"]
+            df_tok = df_tok.query("exch_seg=='NSE'")[columns].rename(
+                columns={"token": "symboltoken"})
+            df_sym = futil.get_df_fm_csv(
+                dpath, "nifty_500", ["symbol", "enabled"])
+            df_sym.dropna(inplace=True)
+            df_sym.drop('enabled', inplace=True, axis=1)
+            df = df_sym.merge(df_tok, how="left", on="symbol")
+            df['pdh'] = 0
+            df.to_csv(csvfile, index=False)
         except Exception as e:
             print(f"{e} while set_symbols \n")
             SystemExit()
         else:
-            print(df.tail())
+            print("symbols \n", df.tail())
             return df
 
     def _get_ohlc(self, **kwargs):
@@ -86,78 +94,79 @@ class Equity:
                 and isinstance(resp['data'][t:][0], list)
             ):
                 return resp['data'][t:][0]
+            print(resp)
             return 0
         except Exception as e:
             print(
-                f"{str(e)} while get_ohlc \n sleeping for {tutils.sec} sec(s)")
-            tutils.slp_for(tutils.sec)
+                f"{str(e)} while calling sub routine _get_ohlc \n")
+            tutils.slp_for(3)
             return 0
 
-    def get_eod_data(self):
-        try:
-            fro = self.max.set(hour=9, minute=14).to_datetime_string()[:-3]
-            nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
-            print(f"getting PDH for {nto}")
-            csvfile = dpath + "2_eod_data.csv"
-            if self.is_mode_trades(csvfile):
-                while (not self.df.query("pdh==0").empty):
-                    df_cp = self.df.query("pdh==0").copy()
-                    for i, row in df_cp.iterrows():
-                        kwargs = {
-                            'symboltoken': row.symboltoken,
-                            'fromdate': fro,
-                            'todate': nto,
-                            'interval': 'ONE_DAY',
-                            'tminus': -1
-                        }
-                        lst = self._get_ohlc(**kwargs)
-                        if isinstance(lst, list):
-                            self.df.at[i, 'pdo'] = lst[1]
-                            self.df.at[i, 'pdh'] = lst[2]
-                            self.df.at[i, 'pdl'] = lst[3]
-                            self.df.at[i, 'pdc'] = lst[4]
-                            print(row.symbol, str(lst))
-                        else:
-                            self.df.at[i, 'pdh'] = 0
-                df = self.df.query("pdh>0")
-                df.to_csv(csvfile, index=False)
-            else:
-                df = pd.read_csv(csvfile, header=0)
-        except Exception as e:
-            print(f"{e} while get_eod_data")
-            SystemExit()
+    def get_eod_data(self, df):
+        fro = self.max.set(hour=9, minute=14).to_datetime_string()[:-3]
+        nto = self.yday.set(hour=15, minute=30).to_datetime_string()[:-3]
+        print(f"getting PDH for {nto}")
+        csvfile = dpath + "2_eod_data.csv"
+        retry = 1
+        if self.is_run(csvfile):
+            while (not df.query("pdh==0").empty) and retry <= 5:
+                df_cp = df.query("pdh==0").copy()
+                for i, row in df_cp.iterrows():
+                    kwargs = {
+                        'symboltoken': row.symboltoken,
+                        'fromdate': fro,
+                        'todate': nto,
+                        'interval': 'ONE_DAY',
+                        'tminus': -1
+                    }
+                    lst = self._get_ohlc(**kwargs)
+                    if isinstance(lst, list):
+                        df.at[i, 'pdo'] = lst[1]
+                        df.at[i, 'pdh'] = lst[2]
+                        df.at[i, 'pdl'] = lst[3]
+                        df.at[i, 'pdc'] = lst[4]
+                        print(row.symbol, str(lst))
+                    else:
+                        df.at[i, 'pdh'] = 0
+                        retry += 1
+                        print(f"retrying attempt: {retry}")
+            # add a new columns
+            self.df['eod'] = nto
+            self.df.to_csv(csvfile, index=False)
         else:
-            print(df.tail(5))
-            return df
-
-    def eval_direction(self, df):
-        print("EOD Data")
-        csvfile = dpath + "3_direction.csv"
-        # distance between low and pdh
-        df["yday_perc"] = df.eval('(pdh-pdl)/pdl')
-        df['dir'] = 0
-        # Update 'dir' column based on conditions
-        df.loc[df['pdc'] > df['pdo'], 'dir'] = -1
-        df.loc[df['pdc'] < df['pdo'], 'dir'] = 1
-        df.to_csv(csvfile, index=False)
-        print(df.tail(5))
+            df = pd.read_csv(csvfile, header=0)
+            print("found today fresh EOD")
+        print("eod data \n", df.tail(5))
         return df
 
     def apply_conditions(self, df):
-        print("YESTERDAY CONDITIONS")
-        csvfile = dpath + "4_yday_conditions.csv"
-        combined_condition = (df['yday_perc'] > Y_PERC) | (
+        csvfile = dpath + "3_conditions.csv"
+        print("remove stocks for which we CANNOT get data")
+        df = df.query("pdh>0")
+        print(df.tail())
+
+        print(f"remove stocks whose PDL < {MIN_PRC} and PDH > {MAX_PRC}")
+        prc_fltr = (df['pdl'] < MIN_PRC) & (df['pdh'] > MAX_PRC)
+        df = df[~prc_fltr]
+        print(df.tail())
+
+        print("find direction based on candle colour")
+        df['dir'] = 0
+        df.loc[df['pdc'] > df['pdo'], 'dir'] = -1
+        df.loc[df['pdc'] < df['pdo'], 'dir'] = 1
+        print(df.tail())
+
+        print("distance between PDL and PDH")
+        df["yday_perc"] = df.eval('(pdh-pdl)/pdl')
+        rm_big_gaps = (df['yday_perc'] > Y_PERC) | (
             df['dir'] == 0)
-        df = df[~combined_condition]
+        df = df[~rm_big_gaps]
+
         df.to_csv(csvfile, index=False)
-        df = pd.read_csv(csvfile, header=0)
         print(df.tail(5))
         return df
 
-    def gap_condtions(self, df):
-        """ 
-            used in backtesting mode
-        """
+    def get_open(self, df):
         fro = self.now.set(hour=9, minute=15).to_datetime_string()[:-3]
         nto = self.now.set(hour=9, minute=20).to_datetime_string()[:-3]
         print(f"{fro} to {nto}")
@@ -174,6 +183,7 @@ class Equity:
             if isinstance(lst, list):
                 df.at[i, 'open'] = lst[1]
                 print(row.symbol, str(lst))
+        print(df.tail())
         return df
 
     def get_preopen(self, row):
@@ -187,28 +197,173 @@ class Equity:
             print(row.symbol, resp['data']['ltp'])
             return resp['data']['ltp']
 
+    def gaps_entry(self, row):
+        entries = []
+        results = []
+        self.count += 1
+        if self.count >= 9:
+            tutils.slp_til_nxt_sec()
+            self.count = 0
+        side = "BUY" if row.dir == 1 else "SELL"
+        args = dict(
+            variety='NORMAL',
+            tradingsymbol=row.symbol,
+            symboltoken=row.symboltoken,
+            transactiontype=side,
+            exchange="NSE",
+            ordertype="LIMIT",
+            producttype="INTRADAY",
+            duration="DAY",
+            price=row.open,
+            triggerprice=0,
+            quantity=row.o_qty
+        )
+        h = user.get_broker_by_id(ACCOUNT)
+        # Submit the API call function to the executor
+        entry = executor.submit(h.order_place, **args)
+        entries.append(entry)
+        for future in cf.as_completed(entries):
+            try:
+                res = future.result()
+                results.append(res)
+            except Exception as e:
+                print(f" in cf entries {e}")
+                results.append(None)
+
+    def gaps_stop(self, row):
+        entries = []
+        results = []
+        self.count += 1
+        if self.count >= 9:
+            tutils.slp_til_nxt_sec()
+            self.count = 0
+        if row.dir == 1:
+            side = "SELL"
+            o_price = row.pdh
+        else:
+            side = "BUY"
+            o_price = row.pdl
+        args = dict(
+            variety='NORMAL',
+            tradingsymbol=row.symbol,
+            symboltoken=row.symboltoken,
+            transactiontype=side,
+            exchange="NSE",
+            ordertype="SL-M",
+            producttype="INTRADAY",
+            duration="DAY",
+            triggerprice=o_price,
+            price=0,
+            quantity=row.o_qty
+        )
+        h = user.get_broker_by_id(ACCOUNT)
+        # Submit the API call function to the executor
+        entry = executor.submit(h.order_place, **args)
+        entries.append(entry)
+        for future in cf.as_completed(entries):
+            try:
+                res = future.result()
+                results.append(res)
+            except Exception as e:
+                print(f" in cf entries {e}")
+                results.append(None)
+
 
 if __name__ == "__main__":
     eqty = Equity()
     eqty.df = eqty.set_symbols()
-    eqty.df = eqty.get_eod_data()
-    eqty.df = eqty.eval_direction(eqty.df)
+    eqty.df = eqty.get_eod_data(eqty.df)
     eqty.df = eqty.apply_conditions(eqty.df)
 
-    print("FINDING GAP TRADES ..", end="\n",)
-    csvfile = dpath + "5.gap_conditions.csv"
-    if MODE_TRADE == 0:
+    """
+    while (
+        pendulum.now().hour != 9 and
+        pendulum.now().minute != 12 and
+        MODE_TRADE == 1
+    ):
+        tutils.slp_til_nxt_sec()
+        print("sleeping till 12th minute")
+    """
+
+    csvfile = dpath + "4_today_open.csv"
+    if MODE_TRADE == 1:
+        print("LIVE MODE ON")
         eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
-    else:
-        df = eqty.gap_condtions(eqty.df)
+        df = eqty.df
+        print(df.tail())
+    else:  # TODO check for file modified
+        print("BACKTESTING MODE ON ..", end="\n",)
+        df = eqty.get_open(eqty.df)
+        print(df.tail())
+
+    print("finding GAP")
     df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
                           df['pdh'], (df['pdl'] - df['open']) / df['open'])
+    print(df.tail())
+
+    print("removing excess GAPS")
     is_perc_grt = df['perc'] > T_PERC
     df = df[~is_perc_grt]
+    print(df.tail())
+
+    print("marking GAP trades for Truth")
     str_perc = f"perc>0&perc<={T_PERC}"
     df['is_gap'] = df.eval(str_perc)
-    df.to_csv(csvfile, index=False)
     print(df.tail())
+
+    print("sorting the perc for breakout trades")
+    df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
+    print(df.tail())
+
+    print(f"saving to {csvfile}")
+    df.to_csv(csvfile, index=False)
+
+    lst_cols_to_drop = ['eod', 'pdo', 'pdc', 'yday_perc']
+    print(f"dropping unwanted columns {lst_cols_to_drop}")
+    df.drop(columns=lst_cols_to_drop, inplace=True)
+    print(df.tail())
+
+    print("copying to global DataFrame \n", df)
+    eqty.df = df.copy()
+
+    cnt_gap_trd = df['is_gap'].sum()
+    print(f"no of gap trades: {cnt_gap_trd}")
+    if cnt_gap_trd > 0:
+        print("calculating order quantity")
+        cap_per_stk = GAPITAL / cnt_gap_trd
+        df['o_qty'] = df['is_gap'].astype(
+            int) * (cap_per_stk / df['open']).astype(int)
+        df['o_qty'].fillna(0, inplace=True)
+        print(df.tail())
+
+        # filter only gap stocks for trading
+        gap_stks = df['is_gap'].astype(int) != 1
+        df = df[~gap_stks]
+        print(df.tail())
+
+        """
+        # apply futures
+        while (
+            pendulum.now().hour != 9 and
+            pendulum.now().minute != 15 and
+            MODE_TRADE == 1
+        ):
+            tutils.slp_til_nxt_sec()
+            print("waiting for 15th minute")
+        """
+        results = df.apply(eqty.gaps_entry, axis=1)
+        for result in results:
+            print(result)
+        """
+        futures = df.apply(eqty.gaps_stop, axis=1)
+        cf.wait(futures)
+        results = [future.result() for future in futures]
+        results = [
+            result for result in results if result is not None]
+        for res in results:
+            print(f"stops: {res}")
+        """
+
     """
     df_trades = df_trades.filter(items=['symbol', 'c'], axis=1)
     df_trades = df_trades.rename(columns={'c': 'close'})
