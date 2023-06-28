@@ -275,15 +275,12 @@ if __name__ == "__main__":
     eqty.df = eqty.get_eod_data(eqty.df)
     eqty.df = eqty.apply_conditions(eqty.df)
 
-    """
     while (
-        pendulum.now().hour != 9 and
-        pendulum.now().minute != 12 and
+        pendulum.now() < pendulum.now().replace(hour=9, minute=12, second=0, microsecond=0) and
         MODE_TRADE == 1
     ):
         tutils.slp_til_nxt_sec()
         print("sleeping till 12th minute")
-    """
 
     csvfile = dpath + "4_today_open.csv"
     if MODE_TRADE == 1:
@@ -344,10 +341,10 @@ if __name__ == "__main__":
         """
         # apply futures
         while (
-            pendulum.now().hour != 9 and
-            pendulum.now().minute != 15 and
-            MODE_TRADE == 1
-        ):
+            MODE_TRADE == 1 and
+            pendulum.now() < pendulum.now().replace(hour=9, 
+            minute=15, second=0, microsecond=0)
+            ):
             tutils.slp_til_nxt_sec()
             print("waiting for 15th minute")
         """
