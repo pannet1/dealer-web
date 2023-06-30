@@ -18,8 +18,8 @@
           <td>
               <button class='btn btn-success'><a href='{{ v }}'>Bulk</a></button>
           </td>
-      {% elif v is string and v | length>31  %}
-          <td>{{ v | truncate(31, True) }}</td>
+      {% elif v is string and v | length>50  %}
+          <td>{{ v | truncate(50, True) }}</td>
       {% else  %}
           <td>{{ v }}</td>
       {% endif %}

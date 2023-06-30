@@ -15,11 +15,9 @@ T_PERC = 0.01
 MIN_PRC = 100
 MAX_PRC = 10000
 GAPITAL = 100000
-YESTERDAY_TMINUS = 1
-TRADE_DAY_TMINUS = 0
+TRADE_DAY_TMINUS = 2
 ACCOUNT = "MAHESHKAATH"
 BUFFER = 0.01
-MODE_TRADE = 1
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
@@ -34,11 +32,12 @@ executor = cf.ThreadPoolExecutor()
 class Equity:
 
     def __init__(self):
-        print("script started at {pendulum.now()}")
+        print(f"script started at {pendulum.now()}")
         user.contracts()
+        YDAY_TMINUS = TRADE_DAY_TMINUS+1
         self.df = pd.DataFrame()
         self.max = pendulum.now().subtract(days=9)
-        self.yday = pendulum.now().subtract(days=YESTERDAY_TMINUS)
+        self.yday = pendulum.now().subtract(days=YDAY_TMINUS)
         self.now = pendulum.now().subtract(days=TRADE_DAY_TMINUS)
         self.count = 0
 
@@ -46,11 +45,12 @@ class Equity:
         """
         if BACKTESTING mode or file written only yesterday
         """
-        if MODE_TRADE == 1 or futil.is_file_not_2day(csv):
-            print(f"going to generate {csv}")
+        if TRADE_DAY_TMINUS == 0:  # live trade
+            return True
+        elif futil.is_file_not_2day(csv):  # file modified
             return True
         print(f"reading {csv}")
-        return False
+        return True
 
     def set_symbols(self):
         try:
@@ -168,11 +168,11 @@ class Equity:
 
     def get_open(self, df):
         fro = self.now.set(hour=9, minute=15).to_datetime_string()[:-3]
-        nto = self.now.set(hour=9, minute=20).to_datetime_string()[:-3]
+        nto = self.now.set(hour=3, minute=30).to_datetime_string()[:-3]
         print(f"{fro} to {nto}")
         param = {
             "exchange": "NSE",
-            "interval": "FIVE_MINUTE",
+            "interval": "ONE_DAY",
             "fromdate": fro,
             "todate": nto,
             "tminus": 0,
@@ -268,6 +268,41 @@ class Equity:
                 print(f" in cf entries {e}")
                 results.append(None)
 
+    def trim_df(self, df):
+        print("finding GAP")
+        df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
+                              df['pdh'], (df['pdl'] - df['open']) / df['open'])
+        print(df.tail())
+
+        print("removing excess GAPS")
+        is_perc_grt = df['perc'] > T_PERC
+        df = df[~is_perc_grt]
+        print(df.tail())
+
+        print(f"saving to {csvfile}")
+        df.to_csv(csvfile, index=False)
+
+        print("marking GAP trades for Truth")
+        str_perc = f"perc>0&perc<={T_PERC}"
+        df['is_gap'] = df.eval(str_perc)
+        print(df.tail())
+
+        print("sorting the perc for breakout trades")
+        df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
+        print(df.tail())
+
+        print("finding max and min to create columns")
+        df['min'] = df[['open', 'pdl']].min(axis=1)
+        df['max'] = df[['open', 'pdh']].max(axis=1)
+        # df['break'] = np.where(df['dir'] == 1, np.maximum(df['open'], df['pdh']), np.minimum(df['open'], df['pdl']))
+
+        lst_cols_to_drop = ['eod', 'pdo', 'pdc', 'yday_perc']
+        print(f"dropping unwanted columns {lst_cols_to_drop}")
+        df.drop(columns=lst_cols_to_drop, inplace=True)
+        print(df.tail())
+
+        return df
+
 
 if __name__ == "__main__":
     eqty = Equity()
@@ -277,13 +312,13 @@ if __name__ == "__main__":
 
     while (
         pendulum.now() < pendulum.now().replace(hour=9, minute=12, second=0, microsecond=0) and
-        MODE_TRADE == 1
+        TRADE_DAY_TMINUS == 0
     ):
         tutils.slp_til_nxt_sec()
-        print("sleeping till 12th minute")
+        print("sleeping :", pendulum.now())
 
     csvfile = dpath + "4_today_open.csv"
-    if MODE_TRADE == 1:
+    if TRADE_DAY_TMINUS == 0:
         print("LIVE MODE ON")
         eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
         df = eqty.df
@@ -293,33 +328,7 @@ if __name__ == "__main__":
         df = eqty.get_open(eqty.df)
         print(df.tail())
 
-    print("finding GAP")
-    df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
-                          df['pdh'], (df['pdl'] - df['open']) / df['open'])
-    print(df.tail())
-
-    print("removing excess GAPS")
-    is_perc_grt = df['perc'] > T_PERC
-    df = df[~is_perc_grt]
-    print(df.tail())
-
-    print("marking GAP trades for Truth")
-    str_perc = f"perc>0&perc<={T_PERC}"
-    df['is_gap'] = df.eval(str_perc)
-    print(df.tail())
-
-    print("sorting the perc for breakout trades")
-    df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
-    print(df.tail())
-
-    print(f"saving to {csvfile}")
-    df.to_csv(csvfile, index=False)
-
-    lst_cols_to_drop = ['eod', 'pdo', 'pdc', 'yday_perc']
-    print(f"dropping unwanted columns {lst_cols_to_drop}")
-    df.drop(columns=lst_cols_to_drop, inplace=True)
-    print(df.tail())
-
+    df = eqty.trim_df(df)
     print("copying to global DataFrame \n", df)
     eqty.df = df.copy()
 
@@ -338,19 +347,17 @@ if __name__ == "__main__":
         df = df[~gap_stks]
         print(df.tail())
 
-        """
         # apply futures
         while (
-            MODE_TRADE == 1 and
-            pendulum.now() < pendulum.now().replace(hour=9, 
-            minute=15, second=0, microsecond=0)
-            ):
+                TRADE_DAY_TMINUS == 0 and pendulum.now() < pendulum.now().replace(
+                    hour=9, minute=15, second=0, microsecond=0)
+        ):
+            print(pendulum.now(), ": waiting for 9:15")
             tutils.slp_til_nxt_sec()
-            print("waiting for 15th minute")
-        """
         results = df.apply(eqty.gaps_entry, axis=1)
         for result in results:
             print(result)
+
         """
         futures = df.apply(eqty.gaps_stop, axis=1)
         cf.wait(futures)
