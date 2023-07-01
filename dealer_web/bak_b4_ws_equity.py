@@ -7,7 +7,7 @@ import concurrent.futures as cf
 from toolkit.fileutils import Fileutils
 from toolkit.utilities import Utilities
 import user
-from websocket_client import WebsocketClient
+
 
 # user preferences
 Y_PERC = 0.03
@@ -15,12 +15,13 @@ T_PERC = 0.01
 MIN_PRC = 100
 MAX_PRC = 10000
 GAPITAL = 100000
-TRADE_DAY_TMINUS = 1
+TRADE_DAY_TMINUS = 0
 ACCOUNT = "HARSHITBONI"
 BUFFER = 0.01
 
 futil = Fileutils()
 lst_dohlcv = ["dtime", "o", "h", "l", "c", "v"]
+df_empty = pd.DataFrame()
 fpath = "../../../"
 dpath = fpath + "data/"
 pd.options.mode.chained_assignment = None
@@ -39,13 +40,6 @@ class Equity:
         self.yday = pendulum.now().subtract(days=YDAY_TMINUS)
         self.now = pendulum.now().subtract(days=TRADE_DAY_TMINUS)
         self.count = 0
-        h = user.get_broker_by_id(ACCOUNT)
-        self.dct_ws_cred = dict(
-            auth_token=h.sess['data']['jwtToken'].split(' ')[1],
-            api_key=h._api_key,
-            client_code=h._user_id,
-            feed_token=h.obj.feed_token
-        )
 
     def is_run(self, csv):
         """
@@ -319,9 +313,6 @@ if __name__ == "__main__":
     eqty.df = eqty.set_symbols()
     eqty.df = eqty.get_eod_data(eqty.df)
     eqty.df = eqty.apply_conditions(eqty.df)
-
-    client = WebsocketClient(eqty.dct_ws_cred)
-    t = client.run()
 
     while (
         pendulum.now() < pendulum.now().replace(hour=9, minute=12, second=0, microsecond=0) and
