@@ -3,8 +3,9 @@ import threading
 
 
 class WebsocketClient(threading.Thread):
-    def __init__(self, kwargs):
+    def __init__(self, kwargs, lst_tkn):
         self.ticks = {}
+        self.token_list = lst_tkn
         self.correlation_id = "abc123"
         self.action = 1
         self.mode = 1
@@ -15,19 +16,28 @@ class WebsocketClient(threading.Thread):
         self.sws = SmartWebSocketV2(**kwargs)
         threading.Thread.__init__(self)
 
-    def on_data(self, wsapp, message):
-        self.ticks = message
-        # close_connection()
+    def on_data(self, wsapp, msg):
+        lst_keys = ['token', 'exchange_timestamp', 'last_traded_price']
+        fltrd = [{k, v} for k, v in msg if k in lst_keys]
+        # Get the value of "token" from the msg dictionary
+        token_value = msg.get("token")
+        # Check if the token value exists as a key in the ticks dictionary
+        if token_value in self.ticks:
+            # Update the values for the existing key
+            self.ticks[token_value].update(fltrd)
+        else:
+            # Add a new key-value pair to the ticks dictionary
+            self.ticks[token_value] = fltrd
 
     def on_open(self, wsapp):
         print("on open")
         token_list = [
             {
                 "exchangeType": 1,
-                "tokens": ["26009"]
+                "tokens": ["26011"]
             }
         ]
-        self.sws.subscribe(self.correlation_id, self.mode, token_list)
+        self.sws.subscribe(self.correlation_id, self.mode, self.token_list)
         # self.sws.unsubscribe(self.correlation_id, self.mode, self.token_list1)
 
     def on_error(self, wsapp, error):
@@ -62,15 +72,15 @@ if __name__ == "__main__":
         )
         return dct
     dct = get_cred()
-    t1 = WebsocketClient(dct)
+    token_list = [
+        {
+            "exchangeType": 1,
+            "tokens": ["26011"]
+        }
+    ]
+    t1 = WebsocketClient(dct, token_list)
     t1.start()
 
     while True:
-        token_list = [
-            {
-                "exchangeType": 1,
-                "tokens": ["26011"]
-            }
-        ]
         print(t1.ticks)
         time.sleep(10)

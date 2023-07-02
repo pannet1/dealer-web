@@ -15,7 +15,7 @@ T_PERC = 0.01
 MIN_PRC = 100
 MAX_PRC = 10000
 GAPITAL = 100000
-TRADE_DAY_TMINUS = 1
+TRADE_DAY_TMINUS = 2
 ACCOUNT = "HARSHITBONI"
 BUFFER = 0.01
 
@@ -173,9 +173,9 @@ class Equity:
         print(df.tail(5))
         return df
 
-    def get_open(self, df):
+    def get_one_fm_ohlc(self, df, colname='open', i_at=1):
         fro = self.now.set(hour=9, minute=15).to_datetime_string()[:-3]
-        nto = self.now.set(hour=9, minute=16).to_datetime_string()[:-3]
+        nto = self.now.set(hour=15, minute=30).to_datetime_string()[:-3]
         print(f"{fro} to {nto}")
         param = {
             "exchange": "NSE",
@@ -188,7 +188,7 @@ class Equity:
             param["symboltoken"] = int(row.symboltoken)
             lst = self._get_ohlc(**param)
             if isinstance(lst, list):
-                df.at[i, 'open'] = lst[1]
+                df.at[i, colname] = lst[i_at]
                 print(row.symbol, str(lst))
         print(df.tail())
         return df
@@ -204,6 +204,46 @@ class Equity:
             print(row.symbol, resp['data']['ltp'])
             return resp['data']['ltp']
         return None
+
+    def trim_df(self, df):
+        csvfile = dpath + "5_trim.csv"
+        if eqty.is_run(csvfile):
+            print("finding GAP")
+            df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
+                                  df['pdh'], (df['pdl'] - df['open']) / df['open'])
+            print(df.tail())
+
+            print("removing excess GAPS")
+            is_perc_grt = df['perc'] > T_PERC
+            df = df[~is_perc_grt]
+            print(df.tail())
+
+            print("marking GAP trades for Truth")
+            str_perc = f"perc>0&perc<={T_PERC}"
+            df['is_gap'] = df.eval(str_perc)
+            print(df.tail())
+
+            print("sorting the perc for breakout trades")
+            # df['perc'] = df['perc'].replace([np.inf, -np.inf], np.nan)
+            df['perc'] = df['perc'].round(4)
+            df.sort_values(by='perc', ascending=False, inplace=True)
+            df = df.reset_index(drop=True)
+            # df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
+
+            print("finding max and min to create columns")
+            df['min'] = df[['open', 'pdl']].min(axis=1)
+            df['max'] = df[['open', 'pdh']].max(axis=1)
+            # df['break'] = np.where(df['dir'] == 1, np.maximum(df['open'], df['pdh']), np.minimum(df['open'], df['pdl']))
+
+            lst_cols_to_drop = ['eod', 'pdo', 'pdc', 'yday_perc']
+            print(f"dropping unwanted columns {lst_cols_to_drop}")
+            df.drop(columns=lst_cols_to_drop, inplace=True)
+            print(df.tail())
+            print(f"saving to {csvfile}")
+            df.to_csv(csvfile, index=False)
+        else:
+            df = pd.read_csv(csvfile, header=0)
+        return df
 
     def gaps_entry(self, row):
         entries = []
@@ -276,42 +316,17 @@ class Equity:
                 print(f" in cf entries {e}")
                 results.append(None)
 
-    def trim_df(self, df):
-        csvfile = dpath + "5_trim.csv"
-        print("finding GAP")
-        df['perc'] = np.where(df['dir'] == 1, (df['open'] - df['pdh']) /
-                              df['pdh'], (df['pdl'] - df['open']) / df['open'])
-        print(df.tail())
-
-        print("removing excess GAPS")
-        is_perc_grt = df['perc'] > T_PERC
-        df = df[~is_perc_grt]
-        print(df.tail())
-
-        print("marking GAP trades for Truth")
-        str_perc = f"perc>0&perc<={T_PERC}"
-        df['is_gap'] = df.eval(str_perc)
-        print(df.tail())
-
-        print("sorting the perc for breakout trades")
-        # df['perc'] = df['perc'].replace([np.inf, -np.inf], np.nan)
-        df['perc'] = df['perc'].round(4)
-        df.sort_values(by='perc', ascending=False, inplace=True)
-        df = df.reset_index(drop=True)
-        # df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
-
-        print("finding max and min to create columns")
-        df['min'] = df[['open', 'pdl']].min(axis=1)
-        df['max'] = df[['open', 'pdh']].max(axis=1)
-        # df['break'] = np.where(df['dir'] == 1, np.maximum(df['open'], df['pdh']), np.minimum(df['open'], df['pdl']))
-
-        lst_cols_to_drop = ['eod', 'pdo', 'pdc', 'yday_perc']
-        print(f"dropping unwanted columns {lst_cols_to_drop}")
-        df.drop(columns=lst_cols_to_drop, inplace=True)
-        print(df.tail())
-        print(f"saving to {csvfile}")
-        df.to_csv(csvfile, index=False)
-        return df
+    def do_orders(self, df):
+        fltr_df = df[(df['ltp'] < df['min']) & (df['dir'] == -1)
+                     | (df['ltp'] > df['max']) & (df['dir'] == 1)]
+        if not fltr_df.empty:
+            results = fltr_df.apply(self.gaps_entry, axis=1)
+            for result in results:
+                print(result)
+            results = fltr_df.apply(self.gaps_stop, axis=1)
+            for res in results:
+                print(result)
+            df.to_csv("trades.csv", index=False)
 
 
 if __name__ == "__main__":
@@ -320,66 +335,50 @@ if __name__ == "__main__":
     eqty.df = eqty.get_eod_data(eqty.df)
     eqty.df = eqty.apply_conditions(eqty.df)
 
-    client = WebsocketClient(eqty.dct_ws_cred)
-    t = client.run()
-
-    while (
-        pendulum.now() < pendulum.now().replace(hour=9, minute=12, second=0, microsecond=0) and
-        TRADE_DAY_TMINUS == 0
-    ):
-        tutils.slp_til_nxt_sec()
-        print("sleeping :", pendulum.now())
+    lst_tokens = eqty.df['symboltoken'].tolist()
+    t1 = WebsocketClient(eqty.dct_ws_cred, lst_tokens)
+    t1.start()
 
     csvfile = dpath + "4_today_open.csv"
-    if TRADE_DAY_TMINUS == 0:
+    COPY_JOB = False
+    while (
+            TRADE_DAY_TMINUS == 0
+            and pendulum.now() < pendulum.now().replace(
+                hour=9, minute=15, second=0, microsecond=0)
+    ):
         print("LIVE MODE ON")
-        eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
-        df = eqty.df
-        df.to_csv(csvfile, index=False)
+        # eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
+        eqty.df['ltp'] = eqty.df['symboltoken'].map(t1.ticks)
+        eqty.df.tail()
+        COPY_JOB = True
+    else:
+        if COPY_JOB:
+            eqty.df.rename(columns={'ltp': 'open'})
+            eqty.df.to_csv(csvfile, index=False)
 
     if eqty.is_run(csvfile):
         print("BACKTESTING MODE ON ..", end="\n",)
-        df = eqty.get_open(eqty.df)
+        eqty.df = eqty.get_one_fm_ohlc(eqty.df)
+        eqty.df.to_csv(csvfile, index=False)
     elif TRADE_DAY_TMINUS > 0:
-        df = pd.read_csv(csvfile, header=0)
+        eqty.df = pd.read_csv(csvfile, header=0)
 
-    df = eqty.trim_df(df)
-    print("copying to global DataFrame \n", df)
-    eqty.df = df.copy()
-
-    cnt_gap_trd = df['is_gap'].sum()
+    eqty.df = eqty.trim_df(eqty.df)
+    cnt_gap_trd = eqty.df['is_gap'].sum()
     print(f"no of gap trades: {cnt_gap_trd}")
-    if cnt_gap_trd > 0:
-        print("calculating order quantity")
-        cap_per_stk = GAPITAL / cnt_gap_trd
-        df['o_qty'] = df['is_gap'].astype(
-            int) * (cap_per_stk / df['open']).astype(int)
-        df['o_qty'].fillna(0, inplace=True)
-        print(df.tail())
 
-        # filter only gap stocks for trading
-        gap_stks = df['is_gap'].astype(int) != 1
-        df = df[~gap_stks]
-        print(df.tail())
+    print("calculating order quantity")
+    eqty.df['o_qty'] = (GAPITAL / eqty.df['open']).astype(int)
+    eqty.df['o_qty'].fillna(0, inplace=True)
+    print(eqty.df.tail())
 
-        # apply futures
-        while (
-                TRADE_DAY_TMINUS == 0 and pendulum.now() < pendulum.now().replace(
-                    hour=9, minute=15, second=0, microsecond=0)
-        ):
-            print(pendulum.now(), ": waiting for 9:15")
-            tutils.slp_til_nxt_sec()
-        df['ltp'] = df.apply(eqty.get_preopen, axis=1)
-        fltr_df = df[(df['ltp'] < df['min']) & (df['dir'] == -1)
-                     | (df['ltp'] > df['max']) & (df['dir'] == 1)]
-        if not fltr_df.empty:
-            results = fltr_df.apply(eqty.gaps_entry, axis=1)
-            for result in results:
-                print(result)
-            results = fltr_df.apply(eqty.gaps_stop, axis=1)
-            for res in results:
-                print(result)
-        df.to_csv("trades.csv", index=False)
+    while TRADE_DAY_TMINUS == 0:
+        eqty.df['ltp'] = eqty.df['symboltoken'].map(t1.ticks)
+        # eqty.df['ltp'] = eqty.df.apply(eqty.get_preopen, axis=1)
+        eqty.do_orders(eqty.df)
+    else:
+        eqty.df = eqty.get_one_fm_ohlc(eqty.df, 'ltp', 4)
+        eqty.do_orders(eqty.df)
 
     """
     df_trades = df_trades.filter(items=['symbol', 'c'], axis=1)
