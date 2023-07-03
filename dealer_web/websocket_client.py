@@ -19,6 +19,7 @@ class WebsocketClient(threading.Thread):
     def on_data(self, wsapp, msg):
         lst_keys = ['token', 'exchange_timestamp', 'last_traded_price']
         fltrd = [{k, v} for k, v in msg if k in lst_keys]
+        fltrd['ltp'] = fltrd.pop('last_traded_price')
         # Get the value of "token" from the msg dictionary
         token_value = msg.get("token")
         # Check if the token value exists as a key in the ticks dictionary
