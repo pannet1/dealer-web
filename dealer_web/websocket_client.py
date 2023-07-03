@@ -17,11 +17,12 @@ class WebsocketClient(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        lst_keys = ['token', 'exchange_timestamp', 'last_traded_price']
-        fltrd = [{k, v} for k, v in msg if k in lst_keys]
+        lst_keys = ['token', 'last_traded_price']
+        fltrd = {k: v for k, v in msg.items() if k in lst_keys}
         fltrd['ltp'] = fltrd.pop('last_traded_price')
+        fltrd['symboltoken'] = int(fltrd.pop('token'))
         # Get the value of "token" from the msg dictionary
-        token_value = msg.get("token")
+        token_value = fltrd.get("symboltoken")
         # Check if the token value exists as a key in the ticks dictionary
         if token_value in self.ticks:
             # Update the values for the existing key
@@ -32,12 +33,6 @@ class WebsocketClient(threading.Thread):
 
     def on_open(self, wsapp):
         print("on open")
-        token_list = [
-            {
-                "exchangeType": 1,
-                "tokens": ["26011"]
-            }
-        ]
         self.sws.subscribe(self.correlation_id, self.mode, self.token_list)
         # self.sws.unsubscribe(self.correlation_id, self.mode, self.token_list1)
 
