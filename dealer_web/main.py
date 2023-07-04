@@ -12,8 +12,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
 pages = ['home', 'margins', 'orders', 'trades', 'positions', 'new', 'basket']
 
-
 # POST methods
+
+
 @app.post("/orders/")
 async def post_orders(request: Request,
                       qty: List[int],
