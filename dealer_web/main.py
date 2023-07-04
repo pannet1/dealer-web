@@ -485,11 +485,188 @@ async def trades(request: Request):
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/home", response_class=HTMLResponse)
-@app.get("/", response_class=HTMLResponse)
+@app.get("/oldhome", response_class=HTMLResponse)
 async def home(request: Request):
     user.contracts()
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    return jt.TemplateResponse("table.html", ctx)
+
+
+@ app.get("/home", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
+async def users(request: Request):
+    user.contracts()
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx['th'] = ['message']
+    ctx['data'] = ["no data"]
+    body = []
+    ao = user.get_users()
+    for row in ao:
+        th = ['user id', 'target', 'max loss', 'disabled', 'orders', 'pnl']
+        td = [
+            row._userid,
+            row._target,
+            row._max_loss,
+            row._disabled,
+        ]
+        u = row
+        dict_orders = u.orders
+        orders = dict_orders.get('data', [])
+        completed_count = 0
+        if isinstance(orders, list):
+            for item in orders:
+                if isinstance(item, dict) and item.get('orderstatus') == 'complete':
+                    completed_count += 1
+        td.append(completed_count)
+        pos = u.positions
+        lst_pos = pos.get('data', [])
+        print(lst_pos)
+        sum = 0
+        if lst_pos:
+            for dct in lst_pos:
+                sum += int(float(dct.get('pnl', 0)))
+        td.append(sum)
+        body.append(td)
+    if len(body) > 0:
+        ctx['th'] = th
+        ctx['data'] = body
+    return jt.TemplateResponse("users.html", ctx)
+
+
+@app.get("/positionbook/{user_id}", response_class=HTMLResponse)
+async def positionbook(request: Request,
+                       user_id: str = 'no data'):
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx['th'] = ['message']
+    ctx['data'] = [user_id]
+    ao = user.get_users()
+    for obj in ao:
+        if obj._userid == user_id:
+            u = obj
+            break
+    if u:
+        body = []
+        pos = u.positions
+        lst_pos = pos.get('data', [])
+        pop_keys = [
+            "symboltoken",
+            "instrumenttype",
+            "priceden",
+            "pricenum",
+            "genden",
+            "gennum",
+            "precision",
+            "multiplier",
+            "boardlotsize",
+            "exchange",
+            "tradingsymbol",
+            "symbolgroup",
+            "cfbuyqty",
+            "cfsellqty",
+            "cfbuyamount",
+            "cfsellamount",
+            "buyavgprice",
+            "sellavgprice",
+            "avgnetprice",
+            "netvalue",
+            "totalbuyvalue",
+            "totalsellvalue",
+            "cfbuyavgprice",
+            "cfsellavgprice",
+            "totalbuyavgprice",
+            "totalsellavgprice",
+            "netprice",
+            "buyqty",
+            "sellqty",
+            "buyamount",
+            "sellamount",
+            "close"
+        ]
+        if lst_pos:
+            for f_dct in lst_pos:
+                [f_dct.pop(key) for key in pop_keys]
+                quantity = f_dct.pop('netqty', 0)
+                lotsize = f_dct.pop('lotsize', 0)
+                try:
+                    lots = int(quantity) / int(lotsize)
+                except Exception as e:
+                    print({e})
+                    f_dct['netqty'] = quantity
+                else:
+                    f_dct['netqty'] = int(lots)
+                k = f_dct.keys()
+                th = list(k)
+                v = f_dct.values()
+                td = list(v)
+                body.append(td)
+            if len(body) > 0:
+                ctx['th'] = th
+                ctx['data'] = body
+    return jt.TemplateResponse("table.html", ctx)
+
+
+@app.get("/orderbook/{user_id}", response_class=HTMLResponse)
+async def orderbook(request: Request,
+                    user_id: str = 'no data'):
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx['th'] = ['message']
+    ctx['data'] = [user_id]
+    ao = user.get_users()
+    for obj in ao:
+        if obj._userid == user_id:
+            u = obj
+            break
+    if u:
+        body = []
+        pos = u.orders
+        lst_pos = pos.get('data', [])
+        pop_keys = [
+            'variety',
+            'producttype',
+            'duration',
+            'price',
+            'squareoff',
+            'trailingstoploss',
+            'stoploss',
+            'triggerprice',
+            'disclosedquantity',
+            'exchange',
+            'symboltoken',
+            'ordertag',
+            'instrumenttype',
+            'expirydate',
+            'strikeprice',
+            'optiontype',
+            'filledshares',
+            'unfilledshares',
+            'cancelsize',
+            'status',
+            'exchtime',
+            'exchorderupdatetime',
+            'fillid',
+            'filltime',
+            'parentorderid'
+        ]
+        if lst_pos:
+            for f_dct in lst_pos:
+                [f_dct.pop(key) for key in pop_keys]
+                quantity = f_dct.pop('quantity', 0)
+                lotsize = f_dct.pop('lotsize', 0)
+                try:
+                    lots = int(quantity) / int(lotsize)
+                except Exception as e:
+                    print({e})
+                    f_dct['quantity'] = quantity
+                else:
+                    f_dct['quantity'] = int(lots)
+                k = f_dct.keys()
+                th = list(k)
+                v = f_dct.values()
+                td = list(v)
+                body.append(td)
+            if len(body) > 0:
+                ctx['th'] = th
+                ctx['data'] = body
     return jt.TemplateResponse("table.html", ctx)
 
 if __name__ == "__main__":

@@ -12,13 +12,17 @@ ao = []
 
 
 for user in users:
-    # user.pop('multiplier', None)
-    user.pop('max_loss', None)
-    user.pop('target', None)
-    user.pop('disabled', None)
-    a = AngelOne(**user)
+    a = AngelOne(user['user_id'], user['api_key'],
+                 user['totp'], user['password'])
     if a.authenticate():
+        a._userid = user['user_id']
+        a._multiplier = user['multiplier']
+        a._max_loss = user['max_loss']
+        a._target = user['target']
+        a._disabled = user['disabled']
         ao.append(a)
+    else:
+        print(f"unable to authenticate user {user.user_id}")
 
 
 def random_broker() -> AngelOne:
