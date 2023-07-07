@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 <!-- The button to open modal -->
 {% block content %}
-  <div class="mb-5 overflow-x-auto">
-    <table class="table w-full">
+  <div class="overflow-auto">
+    <table class="table table-xs table-pin-cols">
       <thead>
       <tr>
       {% for k in th %}
@@ -14,7 +14,7 @@
       {% for tr in data %}
       <tr>
        {% for v in tr %}
-       {% if v is string and '&' in v %}
+       {% if v is string and '/' in v %}
           <td>
               <button class='btn btn-success'><a href='{{ v }}'>Bulk</a></button>
           </td>

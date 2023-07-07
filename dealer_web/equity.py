@@ -4,16 +4,12 @@ from breakout import TRADE_DAY_TMINUS, dpath, futil
 from breakout import Backtest, Live
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 import threading
-from time import sleep
 
 
 class WebsocketClient(threading.Thread):
     def __init__(self, kwargs, lst_tkn):
         self.ticks = {}
         self.token_list = lst_tkn
-        self.correlation_id = "abc123"
-        self.action = 1
-        self.mode = 1
         self.auth_token = kwargs['auth_token'],
         self.api_key = kwargs['api_key'],
         self.client_code = kwargs['client_code'],
@@ -22,12 +18,12 @@ class WebsocketClient(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        self.ticks[int(msg.get('token'))] = msg.get('last_traded_price')
+        self.ticks[int(msg.get('token'))] = msg.get(
+            'last_traded_price') / 100
 
     def on_open(self, wsapp):
         print("on open")
-        self.sws.subscribe(self.correlation_id, self.mode, self.token_list)
-        # self.sws.unsubscribe(self.correlation_id, self.mode, self.token_list1)
+        self.subscribe("subs1", 1, self.token_list)
 
     def on_error(self, wsapp, error):
         print(error)
@@ -46,22 +42,28 @@ class WebsocketClient(threading.Thread):
         self.sws.on_close = self.on_close
         self.sws.connect()
 
+    def subscribe(self, correlation_id, mode, lst_token):
+        print("subscribe")
+        self.sws.subscribe(correlation_id, mode, lst_token)
+
+    def unsubscribe(self, correlation_id, mode, lst_token):
+        # self.sws.unsubscribe(correlation_id, mode, self.token_list)
+        pass
+
 
 if __name__ == "__main__":
     if TRADE_DAY_TMINUS == 0:
         eqty = Live()
-        """
         eqty.df = eqty.set_symbols()
 
-        eqty.df = eqty.get_eod_data(eqty.df)
         csvfile = dpath + "2_eod_data.csv"
+        eqty.df = eqty.get_eod_data(eqty.df)
         eqty.df.to_csv(csvfile, index=False)
+        eqty.df = pd.read_csv(csvfile, header=0)
 
         eqty.df = eqty.apply_conditions(eqty.df)
         csvfile = dpath + "3_conditions.csv"
         eqty.df.to_csv(csvfile, index=False)
-        """
-        csvfile = dpath + "3_conditions.csv"
         eqty.df = pd.read_csv(csvfile, header=0)
 
         lst_tokens = eqty.df['symboltoken'].tolist()
@@ -73,26 +75,26 @@ if __name__ == "__main__":
         ]
         t1 = WebsocketClient(eqty.dct_ws_cred, token_list)
         t1.start()
+        eqty.df['ltp'] = None
         while (
             pendulum.now() < pendulum.now().replace(
-                hour=12, minute=50, second=0, microsecond=0)
+                hour=23, minute=59, second=0, microsecond=0)
         ):
             # eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
             if any(t1.ticks):
-                eqty.df['ltp'] = eqty.df['symboltoken'].replace(t1.ticks)
-                eqty.df.tail()
+                eqty.df['open'] = eqty.df['symboltoken'].map(t1.ticks)
+                print(eqty.df[['symbol', 'open']])
             else:
                 print("tick is empty ?")
-            sleep(1)
-        eqty.df.rename(columns={'ltp': 'open'})
+        print(eqty.df)
 
         eqty.df = eqty.trim_df(eqty.df)
         while True:
             # eqty.df['last_traded_price'] = eqty.df.apply(eqty.get_preopen, axis=1)
-            eqty.df['ltp'] = eqty.df['symboltoken'].replace(t1.ticks)
-            df = eqty.get_entry_cond(eqty.df)
-            eqty.entries(df)
-            eqty.stops()
+            eqty.df['ltp'] = eqty.df['symboltoken'].map(t1.ticks)
+            # print(eqty.df[['symbol', 'ltp']])
+            eqty.entries(eqty.df)
+            eqty.stops(eqty.df)
     else:
         eqty = Backtest()
         eqty.df = eqty.set_symbols()
@@ -103,6 +105,7 @@ if __name__ == "__main__":
             eqty.df.to_csv(csvfile, index=False)
         else:
             eqty.df = pd.read_csv(csvfile, header=0)
+        print("2_eod \n", eqty.df.tail())
 
         csvfile = dpath + "3_conditions.csv"
         if futil.is_file_not_2day(csvfile):
@@ -110,6 +113,7 @@ if __name__ == "__main__":
             eqty.df.to_csv(csvfile, index=False)
         else:
             eqty.df = pd.read_csv(csvfile, header=0)
+        print("3_conditions \n", eqty.df.tail())
 
         csvfile = dpath + "4_today_open.csv"
         if futil.is_file_not_2day(csvfile):
@@ -117,6 +121,7 @@ if __name__ == "__main__":
             eqty.df.to_csv(csvfile, index=False)
         else:
             eqty.df = pd.read_csv(csvfile, header=0)
+        print("4_today_open \n", eqty.df.tail())
 
         csvfile = dpath + "5_trim.csv"
         if futil.is_file_not_2day(csvfile):
@@ -125,10 +130,8 @@ if __name__ == "__main__":
             eqty.df.to_csv(csvfile, index=False)
         else:
             eqty.df = pd.read_csv(csvfile, header=0)
-
+        print("5_trim \n", eqty.df.tail())
         # get a subset of dataframe with entry conditons
-        df = eqty.get_entry_cond(eqty.df)
-        entries = eqty.entries(df)
-        entries.to_csv(dpath + "6_entry.csv", index=False)
-        stops = eqty.stops()
-        stops.to_csv(dpath + "7_stop.csv", index=False)
+        #
+        eqty.entries(eqty.df)
+        eqty.stops(eqty.df)

@@ -1,4 +1,5 @@
 import traceback
+import csv
 import orjson
 import pendulum
 import pandas as pd
@@ -40,12 +41,17 @@ class Breakout:
         self.now = pendulum.now().subtract(days=TRADE_DAY_TMINUS)
         self.orders_per_sec = self.orders_count = 0
         h = user.get_broker_by_id(ACCOUNT)
-        self.dct_ws_cred = dict(
-            auth_token=h.sess['data']['jwtToken'].split(' ')[1],
-            api_key=h._api_key,
-            client_code=h._user_id,
-            feed_token=h.obj.feed_token
-        )
+        if (h is not None
+                and h.sess is not None):
+            self.dct_ws_cred = dict(
+                auth_token=h.sess['data']['jwtToken'].split(' ')[1],
+                api_key=h._api_key,
+                client_code=h._user_id,
+                feed_token=h.obj.feed_token
+            )
+        else:
+            print(f"unable to get login session for {ACCOUNT}")
+            SystemExit()
 
     def set_symbols(self):
         try:
@@ -134,7 +140,7 @@ class Breakout:
         print(df.tail())
 
         print(f"remove stocks whose PDL < {MIN_PRC} and PDH > {MAX_PRC}")
-        prc_fltr = (df['pdl'] < MIN_PRC) & (df['pdh'] > MAX_PRC)
+        prc_fltr = (df['pdl'] < MIN_PRC) | (df['pdh'] > MAX_PRC)
         df = df[~prc_fltr]
         print(df.tail())
 
@@ -198,11 +204,12 @@ class Breakout:
         df = df[~is_perc_grt]
         print(df.tail())
 
+        """
         print("sorting the perc for breakout trades")
         # df['perc'] = df['perc'].replace([np.inf, -np.inf], np.nan)
         df.sort_values(by='perc', ascending=False, inplace=True)
         df = df.reset_index(drop=True)
-        # df['perc'] = df['perc'].round(3).sort_values().reset_index(drop=True)
+        """
 
         print("finding max and min to create columns")
         df['min'] = df[['open', 'pdl']].min(axis=1)
@@ -215,21 +222,23 @@ class Breakout:
         print(df.tail())
 
         print("calculating order quantity")
-        # df['o_qty'] = (GAPITAL / df['open']).astype(int)
-        df['o_qty'] = 1
+        df.query("open > 0", inplace=True)
+        df['o_qty'] = (GAPITAL / df['open']).astype(int)
+        # df['o_qty'] = 1
         print(df.tail())
         return df
 
     def _order_entry(self, row):
         entries = []
         results = []
-        self.orders_count += 1
         if self.orders_count < MAX_TRADES:
+            self.orders_count += 1
             self.orders_per_sec += 1
             if self.orders_per_sec >= 9:
                 tutil.slp_til_nxt_sec()
                 self.orders_per_sec = 0
             side = "BUY" if row.dir == 1 else "SELL"
+            """
             args = dict(
                 variety='NORMAL',
                 tradingsymbol=row.symbol,
@@ -256,8 +265,15 @@ class Breakout:
                     traceback.print_exc()
                     results.append(None)
             # Update self.df['is_stop'] where symboltoken matches
+            """
             self.df.loc[self.df['symboltoken'] ==
                         row['symboltoken'], 'is_entry'] = 1
+            row['is_entry'] = 1
+            csvfile = dpath + "6_entry.csv"
+            df = pd.DataFrame(row).T
+            print("df \n", df)
+            df.to_csv(csvfile, mode='a', index=False, header=False)
+        return results
 
     def _order_exit(self, row):
         entries = []
@@ -272,6 +288,7 @@ class Breakout:
         else:
             side = "BUY"
             o_price = row['pdl']
+        """
         args = dict(
             variety='NORMAL',
             tradingsymbol=row['symbol'],
@@ -298,41 +315,44 @@ class Breakout:
                 traceback.print_exc()
                 results.append(None)
         # Update self.df['is_stop'] where symboltoken matches
+        """
         self.df.loc[self.df['symboltoken'] ==
                     row['symboltoken'], 'is_stop'] = 1
-
-    def get_entry_cond(self, df):
-        condition = (
-            ((df['ltp'] < df['min']) & (df['dir'] == -1)) |
-            ((df['ltp'] > df['max']) & (df['dir'] == 1)) &
-            (df['is_entry'] == 0) &
-            (df['is_stop'] == 0)
-        )
-        df = df[condition]
-        return df
+        row['is_stop'] = 1
+        csvfile = dpath + "7_stop.csv"
+        df = pd.DataFrame(row).T
+        print("stop \n", df)
+        df.to_csv(csvfile, mode='a', index=False, header=False)
 
     def entries(self, df):
         try:
+            condition = (
+                ((df['ltp'] < df['min']) & (df['dir'] == -1)) |
+                ((df['ltp'] > df['max']) & (df['dir'] == 1)) &
+                (df['is_entry'] == 0) &
+                (df['is_stop'] == 0)
+            )
+            df = df[condition]
             # filter old entries
             if not df.empty:
                 results = df.apply(self._order_entry, axis=1)
                 for result in results:
                     print(result)
-                return df
+                # Filter the DataFrame based on the 'is_entry' column
         except Exception as e:
-            print(f"entry str{e}")
+            print(f"entry {e}")
+            traceback.print_exc()
 
-    def stops(self):
+    def stops(self, df):
         try:
-            df = self.df[(self.df['is_entry'] == 1) &
-                         (self.df['is_stop'] == 0)]
             if not df.empty:
-                results = df.apply(self._order_exit, axis=1)
-                for result in results:
-                    print(result)
-                return df
+                df = df[(df['is_entry'] == 1) &
+                        (df['is_stop'] == 0)]
+                if not df.empty:
+                    df.apply(self._order_exit, axis=1)
         except Exception as e:
-            print(f"exit str{e}")
+            print(f"exit {e}")
+            traceback.print_exc()
 
 
 class Live(Breakout):

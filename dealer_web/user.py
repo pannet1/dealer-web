@@ -22,7 +22,7 @@ for user in users:
         a._disabled = user['disabled']
         ao.append(a)
     else:
-        print(f"unable to authenticate user {user.user_id}")
+        print(f"unable to authenticate user {user['user_id']}")
 
 
 def random_broker() -> AngelOne:
