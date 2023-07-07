@@ -1,6 +1,6 @@
 import pandas as pd
 import pendulum
-from breakout import TRADE_DAY_TMINUS, dpath, futil
+from breakout import TRADE_DAY_TMINUS, dpath, futil, tutil
 from breakout import Backtest, Live
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 import threading
@@ -75,17 +75,17 @@ if __name__ == "__main__":
         ]
         t1 = WebsocketClient(eqty.dct_ws_cred, token_list)
         t1.start()
+        while not any(t1.ticks):
+            print("tick is empty ?")
+            tutil.slp_til_nxt_sec
         eqty.df['ltp'] = None
-        while (
+        while True (
             pendulum.now() < pendulum.now().replace(
-                hour=23, minute=59, second=0, microsecond=0)
+                hour=9, minute=15, second=0, microsecond=0)
         ):
             # eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
-            if any(t1.ticks):
-                eqty.df['open'] = eqty.df['symboltoken'].map(t1.ticks)
-                print(eqty.df[['symbol', 'open']])
-            else:
-                print("tick is empty ?")
+            eqty.df['open'] = eqty.df['symboltoken'].map(t1.ticks)
+            print(eqty.df[['symbol', 'open']])
         print(eqty.df)
 
         eqty.df = eqty.trim_df(eqty.df)
