@@ -2,13 +2,13 @@
 <!-- The button to open modal -->
 {% block content %}
   <div class="overflow-auto">
-    <table class="table table-xs table-pin-cols">
+    <table class="table table-xs">
       <thead>
       <tr>
+          <th>All</th>
       {% for k in th %}
           <th>{{ k }}</th>
       {% endfor %}
-          <th>All</th>
       </tr>
       </thead>
       {% for tr in data %}

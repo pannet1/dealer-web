@@ -2,36 +2,37 @@
 <!-- The button to open modal -->
 {% block content %}
   <div class="mb-5 overflow-x-auto">
-    <table class="table table-xs">
+    <table class="table table-xs table-pin-cols">
       <thead>
         <tr>
-          <th colspan='2'>Operations</th>
+          <th colspan='3'>Operations</th>
           {% for k in th %}
-              <th>{{ k }}</th>
+              <th>{{ 'txn' if k=='transactiontype' else k }}</th>
           {% endfor %}
-          <th colspan='1'>All</th>
         </tr>
       </thead>
       {% for tr in data %}
         <tr>
-            <td>
+            <th>
               <label for="my-modal-4" class="btn btn-xs btn-primary btn-mod ">mod</label>
-            </td>
+            </th>
             <td>
               <button class="btn btn-xs btn-primary btn-cncl">x</button>
             </td>
           {% for v in tr %}
-            {% if v is string and '&' in v %}
+          {% if v is string and '&' in v and v | length>29 %}
               <td>
                 <a class="link link-error" href='{{ v }}'>BULK</a></button>
               </td>
-            {% elif v is string and " " in v %}
+            {% elif v is string and ' ' in v and v | length>25  %}
                 <!-- td>{{ v | truncate(50, True) }}</td -->
                 <td>
                   <div class="tooltip tooltip-error" data-tip="{{ v }}">
                     <button class="btn btn-xs btn-error">?</button>
                   </div>
                 </td>
+            {% elif v is string and v=='trigger pending' %}
+                <td class="bg-green-500">{{ v }}</td>
             {% else  %}
                 <td>{{ v }}</td>
             {% endif %}

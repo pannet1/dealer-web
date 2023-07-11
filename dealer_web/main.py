@@ -426,7 +426,7 @@ async def positions(request: Request):
             url = '/close_position_by_users/?'
             for k, v in dct.items():
                 url += f'{k}={v}&'
-            ord.append(url)
+            ord.insert(0, url)
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("positions.html", ctx)
 
