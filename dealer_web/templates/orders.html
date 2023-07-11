@@ -25,7 +25,7 @@
               <td>
                 <a class="link link-error" href='{{ v }}'>BULK</a></button>
               </td>
-            {% elif v is string and v | length>50  %}
+            {% elif v is string and " " in v %}
                 <!-- td>{{ v | truncate(50, True) }}</td -->
                 <td>
                   <div class="tooltip tooltip-error" data-tip="{{ v }}">
