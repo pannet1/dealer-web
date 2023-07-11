@@ -407,7 +407,7 @@ async def orders(request: Request):
             url = '/bulk_modify_order/?'
             for k, v in dct.items():
                 url += f'{k}={v}&'
-            ord.append(url)
+            ord.insert(0, url)
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("orders.html", ctx)
 
