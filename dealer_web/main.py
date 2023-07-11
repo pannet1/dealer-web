@@ -385,7 +385,8 @@ async def orders(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
-    args = ['producttype',
+    args = ['cancel_modify',
+            'producttype',
             'ordertype',
             'price',
             'triggerprice',
@@ -407,7 +408,6 @@ async def orders(request: Request):
             for k, v in dct.items():
                 url += f'{k}={v}&'
             ord.append(url)
-            print(url)
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("orders.html", ctx)
 

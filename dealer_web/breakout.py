@@ -1,5 +1,4 @@
 import traceback
-import csv
 import orjson
 import pendulum
 import pandas as pd
@@ -64,7 +63,7 @@ class Breakout:
             df_tok = df_tok.query("exch_seg=='NSE'")[columns].rename(
                 columns={"token": "symboltoken"})
             df_sym = futil.get_df_fm_csv(
-                dpath, "nifty_500", ["symbol", "enabled"])
+                dpath, "nifty_200", ["symbol", "enabled"])
             df_sym.dropna(inplace=True)
             df_sym.drop('enabled', inplace=True, axis=1)
             df = df_sym.merge(df_tok, how="left", on="symbol")
@@ -266,8 +265,8 @@ class Breakout:
                     results.append(None)
             # Update self.df['is_stop'] where symboltoken matches
             """
-            self.df.loc[self.df['symboltoken'] ==
-                        row['symboltoken'], 'is_entry'] = 1
+            self.df.at[self.df['symboltoken'] ==
+                       row['symboltoken'], 'is_entry'] = 1
             row['is_entry'] = 1
             csvfile = dpath + "6_entry.csv"
             df = pd.DataFrame(row).T
@@ -337,8 +336,8 @@ class Breakout:
             if not df.empty:
                 results = df.apply(self._order_entry, axis=1)
                 for result in results:
-                    print(result)
-                # Filter the DataFrame based on the 'is_entry' column
+                    if result:
+                        print(result)
         except Exception as e:
             print(f"entry {e}")
             traceback.print_exc()

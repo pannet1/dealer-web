@@ -4,34 +4,39 @@
   <div class="mb-5 overflow-x-auto">
     <table class="table table-xs">
       <thead>
-      <tr>
-      {% for k in th %}
-          <th>{{ k }}</th>
-      {% endfor %}
+        <tr>
           <th colspan='2'>Operations</th>
-      </tr>
+          {% for k in th %}
+              <th>{{ k }}</th>
+          {% endfor %}
+          <th colspan='1'>All</th>
+        </tr>
       </thead>
       {% for tr in data %}
-      <tr>
-       {% for v in tr %}
-       {% if v is string and '&' in v %}
-          <td>
-              <button class='btn btn-success'><a href='{{ v }}'>Bulk</a></button>
-          </td>
-      {% elif v is string and v | length>50  %}
-          <td>{{ v | truncate(50, True) }}</td>
-      {% else  %}
-          <td>{{ v }}</td>
-      {% endif %}
-
-        {% endfor %}
-        <td>
-        <label for="my-modal-4" class="btn btn-info btn-mod ">MOD</label>
-        </td>
-        <td>
-          <button class="btn btn-circle btn-warning btn-cncl">X</button>
-        </td>
-      </tr>
+        <tr>
+            <td>
+              <label for="my-modal-4" class="btn btn-xs btn-primary btn-mod ">mod</label>
+            </td>
+            <td>
+              <button class="btn btn-xs btn-primary btn-cncl">x</button>
+            </td>
+          {% for v in tr %}
+            {% if v is string and '&' in v %}
+              <td>
+                <a class="link link-error" href='{{ v }}'>BULK</a></button>
+              </td>
+            {% elif v is string and v | length>50  %}
+                <!-- td>{{ v | truncate(50, True) }}</td -->
+                <td>
+                  <div class="tooltip tooltip-error" data-tip="{{ v }}">
+                    <button class="btn btn-xs btn-error">?</button>
+                  </div>
+                </td>
+            {% else  %}
+                <td>{{ v }}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
       {% endfor %}
     </table>
   </div>
@@ -57,7 +62,7 @@
   <input type="checkbox" id="my-modal-4" class="modal-toggle" />
   <label for="my-modal-4" class="modal cursor-pointer">
   <label class="modal-box relative" for="">
-  <label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+  <label for="my-modal-4" class="btn btn-xs btn-circle absolute right-2 top-2">✕</label>
   <h1 id="title" class="text-lg font-bold">No Title</h1>
   <form id='frm' method='post' action='/order_modify/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full">
     <div class="btn-group">

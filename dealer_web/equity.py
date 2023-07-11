@@ -75,11 +75,14 @@ if __name__ == "__main__":
         ]
         t1 = WebsocketClient(eqty.dct_ws_cred, token_list)
         t1.start()
-        while not any(t1.ticks):
-            print("tick is empty ?")
+        while (
+                not any(t1.ticks)
+
+                ):
+            print(f"{t1.ticks} is empty ?")
             tutil.slp_til_nxt_sec
         eqty.df['ltp'] = None
-        while True (
+        while (
             pendulum.now() < pendulum.now().replace(
                 hour=9, minute=15, second=0, microsecond=0)
         ):
