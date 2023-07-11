@@ -8,7 +8,7 @@
       {% for k in th %}
           <th>{{ k }}</th>
       {% endfor %}
-          <th>Operations</th>
+          <th>All</th>
       </tr>
       </thead>
       {% for tr in data %}
@@ -16,7 +16,7 @@
        {% for v in tr %}
        {% if v is string and '/' in v %}
           <td>
-              <button class='btn btn-success'><a href='{{ v }}'>Bulk</a></button>
+              <button class='btn btn-xs btn-success'><a href='{{ v }}'>Bulk</a></button>
           </td>
       {% elif v is string and v | length>31  %}
           <td>{{ v | truncate(31, True) }}</td>
