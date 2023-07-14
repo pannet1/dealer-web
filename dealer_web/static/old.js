@@ -1,3 +1,4 @@
+
 // consumes sync_frm_clr from main.js
 document.addEventListener('DOMContentLoaded', () => {
   const txn = document.getElementById('txn')
@@ -13,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+
 const copyButton = document.getElementById('copyButton');
 copyButton.addEventListener('click', () => {
   const sourceTable = document.querySelector('.mx-auto.table.table-compact');
@@ -22,34 +25,31 @@ copyButton.addEventListener('click', () => {
     return qtyInput && Number(qtyInput.value) > 0;
   });
   rowsToCopy.forEach((row, index) => {
-    const newRow = document.createElement('div');
-    newRow.classList.add('row');
-
+    const newRow = document.createElement('tr');
     const ptypeInputs = Array.from(document.querySelectorAll('input[name="ptype"]'));
 
     ptypeInputs.forEach((input) => {
       if (input.checked) {
-        const title = input.getAttribute('data-title');
-        let ptype;
+       const title = input.getAttribute('data-title');
+         let ptype;
         if (title == "NRML") {
-          ptype = 'CARRYFORWARD'
+            ptype = 'CARRYFORWARD'
         } else if (title == "MIS") {
-          ptype = 'INTRADAY'
-        } else {
-          ptype = 'DELIVERY'
+            ptype = 'INTRADAY' 
+        } else  {
+            ptype = 'DELIVERY'
         }
-        const ptypeInput = document.createElement('input');
-        ptypeInput.name = 'ptype';
-        ptypeInput.value = ptype;
-        newRow.appendChild(ptypeInput);
+       newRow.innerHTML += `<td>
+                          <input name="ptype" value=${ptype}>
+                        </td>`
       }
     });
-
+    
     const otypeInputs = Array.from(document.querySelectorAll('input[name="otype"]'));
-
+    
     otypeInputs.forEach((input) => {
       if (input.checked) {
-        const title = input.getAttribute('data-title');
+        const title = input.getAttribute('data-title'); 
         let otype;
         if (title == "LMT") {
           otype = "LIMIT"
@@ -60,64 +60,51 @@ copyButton.addEventListener('click', () => {
         } else {
           otype = "STOPLOSS_MARKET"
         }
-        const otypeInput = document.createElement('input');
-        otypeInput.name = 'otype';
-        otypeInput.value = otype;
-        newRow.appendChild(otypeInput);
+        newRow.innerHTML += `<td>
+                        <input name="otype" value=${otype}>
+                        </td>`
       }
     });
 
     const qtyInput = row.querySelector('input[name="qty"]');
     const qty = qtyInput.value;
-    const qtyInputField = document.createElement('input');
-    qtyInputField.name = 'quantity';
-    qtyInputField.value = qty;
-    newRow.appendChild(qtyInputField);
-
+    newRow.innerHTML += `<td>
+                          <input name="quantity" value=${qty}>
+                        </td>`;
     const clientNameInput = row.querySelector('input[name="client_name"]');
     const clientName = clientNameInput.value;
-    const clientNameInputField = document.createElement('input');
-    clientNameInputField.name = 'client_name';
-    clientNameInputField.value = clientName;
-    newRow.appendChild(clientNameInputField);
-
+    newRow.innerHTML += `<td>
+                          <input name="client_name" value=${clientName}>
+                        </td>`;
     const symbolInput = document.getElementById('symbol');
-    const symbolInputField = document.createElement('input');
-    symbolInputField.name = 'tradingsymbol';
-    symbolInputField.value = symbolInput.value;
-    newRow.appendChild(symbolInputField);
-
+    newRow.innerHTML += `<td>
+                          <input name="tradingsymbol" value=${symbolInput.value}>
+                        </td>`;
     const exchInput = document.getElementById('exchange');
-    const exchInputField = document.createElement('input');
-    exchInputField.name = 'exchange';
-    exchInputField.value = exchInput.value;
-    newRow.appendChild(exchInputField);
-
+    newRow.innerHTML += `<td>
+                          <input name="exchange" value=${exchInput.value}>
+                        </td>`;
     const tknInput = document.getElementById('token');
-    const tknInputField = document.createElement('input');
-    tknInputField.name = 'token';
-    tknInputField.value = tknInput.value;
-    newRow.appendChild(tknInputField);
-
+    newRow.innerHTML += `<td>
+                          <input name="token" value=${tknInput.value}>
+                        <td>`                 
     const priceInput = document.getElementById('price');
-    const priceInputField = document.createElement('input');
-    priceInputField.name = 'price';
-    priceInputField.value = priceInput.value;
-    newRow.appendChild(priceInputField);
+    newRow.innerHTML += `<td>
+                          <input name="price" value=${priceInput.value}>
+                        </td>`;
 
     const triggerInput = document.getElementById('trigger');
-    const triggerInputField = document.createElement('input');
-    triggerInputField.name = 'trigger';
-    triggerInputField.value = triggerInput.value;
-    newRow.appendChild(triggerInputField);
+    newRow.innerHTML += `<td>
+                          <input name="trigger" value=${triggerInput.value}>
+                        </td>`;
 
     const txnCheckbox = document.getElementById('txn');
     const txnValue = txnCheckbox.checked ? 'BUY' : 'SELL';
-    const txnInputField = document.createElement('input');
-    txnInputField.name = 'transactiontype';
-    txnInputField.value = txnValue;
-    newRow.appendChild(txnInputField);
+    newRow.innerHTML += `<td>
+                          <input name="transactiontype" value=${txnValue}>
+                        </td>`;
 
     targetTable.appendChild(newRow);
   });
 });
+

@@ -69,67 +69,70 @@ const getRows = (my) => {
   }
   console.log(keys)
   let data = '';
-  if (keys[0] == 'LIMIT') {
+  if (keys[3] == 'LIMIT') {
     data = 'LMT'
   } 
-  else if(keys[0] == 'MARKET') {
+  else if(keys[3] == 'MARKET') {
     data = 'MKT'  
   }
-  else if(keys[0] == 'STOPLOSS_LIMIT') {
+  else if(keys[3] == 'STOPLOSS_LIMIT') {
     data = 'SL'  
   }
-  else if(keys[0] == 'STOPLOSS_MARKET') {
+  else if(keys[3] == 'STOPLOSS_MARKET') {
     data = 'SL-M'  
+  }
+  else {
+    console.log("FAILED      XXXXX")
   }
   const otype = document.querySelectorAll(`input[data-title=${data}]`)
   otype[0].setAttribute('checked', 'checked') 
   let pdata = '';
-  if (keys[1] == 'CARRYFORWARD') {
+  if (keys[4] == 'CARRYFORWARD') {
     pdata = 'NRML' 
   } 
-  else if(keys[1] == 'INTRADAY') {
+  else if(keys[4] == 'INTRADAY') {
     pdata = 'MIS'  
   }
-  else if(keys[1] == 'DELIVERY') {
+  else if(keys[4] == 'DELIVERY') {
     pdata = 'CNC'  
   } 
   const ptype = document.querySelectorAll(`input[data-title=${pdata}]`)
   ptype[0].setAttribute('checked', 'checked') 
   const price = document.getElementById('price')
-  price.value = keys[2]
+  price.value = keys[5]
   const trigger = document.getElementById('trigger')
-  trigger.value = keys[3]
+  trigger.value = keys[6]
   const qty = document.getElementById('qty')
-  qty.value = keys[4]
+  qty.value = keys[7]
   const symbol = document.getElementById('symbol')
-  symbol.value = keys[5]
+  symbol.value = keys[8]
   const txn = document.getElementById('txn')
-  if (keys[6] == 'BUY') {
+  if (keys[9] == 'BUY') {
     txn.setAttribute('checked', 'checked') 
   } else {
     txn.removeAttribute('checked')
   }
-  sync_frm_clr(keys[6])
+  sync_frm_clr(keys[9])
 
   const exchange = document.getElementById('exchange')
-  exchange.value = keys[7]
+  exchange.value = keys[10]
   const token = document.getElementById('token')
-  token.value = keys[8]
+  token.value = keys[11]
   const order_id = document.getElementById('order_id')
-  order_id.value = keys[9]
+  order_id.value = keys[12]
   // key10 is empty
   // key11 is condition for this loop
-  if (keys[11] == 'cancelled') {
+  if (keys[14] == 'cancelled') {
     data = 'DONT_DO_ANYTHING'
   } else
-  if (keys[11] == 'complete') {
+  if (keys[14] == 'complete') {
     data = 'DONT_DO_ANYTHING'
   } else
-  if (keys[11] == 'rejected') {
+  if (keys[14] == 'rejected') {
     data = 'DONT_DO_ANYTHING'
   }
   const client_name = document.getElementById('client_name')
-  client_name.value = keys[12]
+  client_name.value = keys[15]
   const title = document.getElementById('title')
   title.innerHTML = symbol.value + ' (' + client_name.value + ')'
   return data

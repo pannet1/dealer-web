@@ -77,7 +77,6 @@ if __name__ == "__main__":
         t1.start()
         while (
                 not any(t1.ticks)
-
                 ):
             print(f"{t1.ticks} is empty ?")
             tutil.slp_til_nxt_sec
@@ -86,14 +85,12 @@ if __name__ == "__main__":
             pendulum.now() < pendulum.now().replace(
                 hour=9, minute=15, second=0, microsecond=0)
         ):
-            # eqty.df['open'] = eqty.df.apply(eqty.get_preopen, axis=1)
             eqty.df['open'] = eqty.df['symboltoken'].map(t1.ticks)
             print(eqty.df[['symbol', 'open']])
         print(eqty.df)
 
         eqty.df = eqty.trim_df(eqty.df)
         while True:
-            # eqty.df['last_traded_price'] = eqty.df.apply(eqty.get_preopen, axis=1)
             eqty.df['ltp'] = eqty.df['symboltoken'].map(t1.ticks)
             # print(eqty.df[['symbol', 'ltp']])
             eqty.entries(eqty.df)
