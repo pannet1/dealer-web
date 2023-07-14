@@ -40,6 +40,7 @@ async def post_orders(request: Request,
             elif otype == 2:
                 ordertype = 'MARKET'
                 variety = 'NORMAL'
+                price = 0
             elif otype == 3:
                 ordertype = 'STOPLOSS_LIMIT'
                 variety = 'STOPLOSS'

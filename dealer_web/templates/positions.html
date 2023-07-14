@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 <!-- The button to open modal -->
 {% block content %}
+<!-- container-->
   <div class="overflow-auto">
     <table class="table table-xs">
       <thead>
@@ -15,9 +16,9 @@
       <tr>
        {% for v in tr %}
        {% if v is string and '/' in v %}
-          <td>
-              <button class='btn btn-xs btn-success'><a href='{{ v }}'>Bulk</a></button>
-          </td>
+        <td>
+          <button class='btn btn-xs btn-success'><a href='{{ v }}'>Bulk</a></button>
+        </td>
       {% elif v is string and v | length>31  %}
           <td>{{ v | truncate(31, True) }}</td>
       {% else  %}

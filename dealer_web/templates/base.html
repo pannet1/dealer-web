@@ -27,21 +27,13 @@
         </ul>
       </div>
     </div>
-    <!-- container-->
-    <div class="mx-auto relative bg-indigo-100 h-screen w-screen">
     {% block form %}
     {% endblock form %}
     {% block content %}
     {% endblock content %}
-      <!-- footer -->
-    {% if title!='home' %}
-    <div class="w-full bg-indigo-500 opacity-90">
-     <div class="mx-auto text-lg text-center text-white my-4">
-        dealerweb@ecomsense.in
-      </div>
-    </div>
-    {% endif %}
-   </div>
+    {% block basket %}
+    {% endblock basket %}
+
   </body>
 <!-- common func main.js moved to header -->
 
@@ -81,9 +73,7 @@ const getRows = (my) => {
   else if(keys[3] == 'STOPLOSS_MARKET') {
     data = 'SL-M'  
   }
-  else {
-    console.log("FAILED      XXXXX")
-  }
+
   const otype = document.querySelectorAll(`input[data-title=${data}]`)
   otype[0].setAttribute('checked', 'checked') 
   let pdata = '';

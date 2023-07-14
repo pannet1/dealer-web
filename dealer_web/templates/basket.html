@@ -1,112 +1,121 @@
 {% extends "base.html" %}
-{%  block form  %}
-<form id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
-  <div class="btn-group">
-    <input type="radio" name="ptype" value="1" data-title="NRML" class="btn btn-sm" checked />
-    <input type="radio" name="ptype" value="2" data-title="MIS" class="btn btn-sm"  />
-    <input type="radio" name="ptype" value="3" data-title="CNC" class="btn btn-sm" />
-  </div>
-  <div class="btn-group lg:float-right">
-    <input type="radio" name="otype" value="1" data-title="LMT" class="btn btn-sm" checked />
-    <input type="radio" name="otype" value="2" data-title="MKT" class="btn btn-sm"  />
-    <input type="radio" name="otype" value="3" data-title="SL" class="btn btn-sm" />
-    <input type="radio" name="otype" value="4" data-title="SL-M" class="btn btn-sm" />
-  </div>
-  <div class="form-control autocomplete relative inline-block w-full">
-    <label class="label">
-      <span class="label-text">Trading Symbol</span>
+{%  block content  %}
+<!-- begin seperation content -->
+<div class="flex flex-col w-full lg:flex-row">
+  <!--  begin input form on the left side -->
+  <div class="grid flex-grow h-32 card place-items-center max-w-lg">
+    <form id="frm" autocomplete="off" class="p-2 bg-red-300">
+    <div class="btn-group">
+      <input type="radio" name="ptype" value="1" data-title="NRML" class="btn btn-sm" checked />
+      <input type="radio" name="ptype" value="2" data-title="MIS" class="btn btn-sm"  />
+      <input type="radio" name="ptype" value="3" data-title="CNC" class="btn btn-sm" />
+    </div>
+    <div class="btn-group lg:float-right">
+      <input type="radio" name="otype" value="1" data-title="LMT" class="btn btn-sm" checked />
+      <input type="radio" name="otype" value="2" data-title="MKT" class="btn btn-sm"  />
+      <input type="radio" name="otype" value="3" data-title="SL" class="btn btn-sm" />
+      <input type="radio" name="otype" value="4" data-title="SL-M" class="btn btn-sm" />
+    </div>
+    <div class="form-control autocomplete relative inline-block w-full">
+      <label class="label">
+        <span class="label-text">Trading Symbol</span>
+      </label>
+      <input id="symbol" name="symbol" type="text" class="input input-sm input-bordered" style="width:81%">
+      <input id="exchange" name="exchange" type="text" readonly="readonly" class="input input-sm input-ghost float-right" style="width:4.5rem" />
+      <input id="token" name="token" type="hidden" />
+    </div>
+    <div class="form-control relative inline-block">
+      <label class="label">
+        <span class="label-text">Price</span>
+        <span class="label-text">Trigger Price</span>
+      </label>
+      <input type="text" id="price" name="price" class="input input-sm input-bordered" style="width:49%"/>
+      <input type="text" id="trigger" name="trigger" class="input input-sm input-bordered float-right" style="width:49%"/>
+    </div>
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text-alt">Lot size:</span>
+        <span id="lotsize" class="label-text-alt"></span>
+      </label>
+    </div>
+    <div class="form-control">
+    <label class="label cursor-pointer">
+      <span class="label-text text-lg">SELL</span>
+      <input id="txn" type="checkbox" name="txn" class="input-sm toggle toggle-lg bg-red-300 checked:bg-green-500"/>
+      <span class="label-text text-lg">BUY</span>
     </label>
-    <input id="symbol" name="symbol" type="text" class="input input-bordered" style="width:81%">
-    <input id="exchange" name="exchange" type="text" readonly="readonly" class="input input-ghost float-right" style="width:4.5rem" />
-    <input id="token" name="token" type="hidden" />
-  </div>
-  <div class="form-control relative inline-block">
-    <label class="label">
-      <span class="label-text">Price</span>
-      <span class="label-text">Trigger Price</span>
-    </label>
-    <input type="text" id="price" name="price" class="input input-bordered" style="width:49%"/>
-    <input type="text" id="trigger" name="trigger" class="input input-bordered float-right" style="width:49%"/>
-  </div>
-  <div class="form-control">
-    <label class="label">
-      <span class="label-text-alt">Lot size:</span>
-      <span id="lotsize" class="label-text-alt"></span>
-    </label>
-  </div>
-<div class="form-control">
-  <label class="label cursor-pointer">
-    <span class="label-text text-lg">SELL</span>
-    <input id="txn" type="checkbox" name="txn" class="toggle toggle-lg bg-red-300 checked:bg-green-500"/>
-    <span class="label-text text-lg">BUY</span>
-  </label>
-</div>
-{% endblock form %}
+    </div>
 
-{% block content %}
+
   <table class="mx-auto table table-compact">
-    {% if th %}
-    <tr>
-      {% for k in th %}
-          <th>{{ k }}</th>
-      {% endfor %}
-      <th>qty</th>
-    </tr>
-      {% for tr in data %}
-    <tr>
-        <td>{{ tr[0] | int }}</td>
-        <td><input name="client_name" class="hidden" value='{{ tr[1] }}'>{{ tr[1] }}</td>
-        <td>
-          <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
-        </td>
-      </tr>
-      {% endfor %}
-      {% endif %}
-
-    {% if mh %}
-    <tr>
-      {% for k in mh %}
-          <th>{{ k }}</th>
-      {% endfor %}
-      <th>qty</th>
-    </tr>
-      {% for tr in md %}
-    <tr>
-        {% for v in tr %}
-        {% if (v | int) >= 0 or (v | int) < 0   %}
-          <td>{{ v | int }}</td>
-        {% else %}
-        <td><input name="client_name[]" class="hidden" value='{{ v }}'>{{ v }}</td>
-        {% endif %}
-        {% endfor %}
-          <td>
-            <input name="qty[]" type="number" class="input input-primary input-bordered input-sm" min="0" value="0">
-          </td>
-      </tr>
-      {% endfor %}
-      {%  endif %}
+      {% if th %}
       <tr>
-        <td colspan="3">
-          <input type="button"
-          class="btn btn-primary btn-outline btn-block"
-          id="copyButton"
-          value="SEND"/>
-        </td>
+        {% for k in th %}
+            <th>{{ k }}</th>
+        {% endfor %}
+        <th>qty</th>
       </tr>
-    </table>
-</form>
+        {% for tr in data %}
+      <tr>
+          <td>{{ tr[0] | int }}</td>
+          <td><input name="client_name" class="hidden" value='{{ tr[1] }}'>{{ tr[1] }}</td>
+          <td>
+            <input name="qty" type="number" class="input input-primary input-bordered input-sm" min="0" value="0"/>
+          </td>
+        </tr>
+        {% endfor %}
+        {% endif %}
 
-<div class="overflow-x-auto">
-<form action="/post_basket/" method="POST">
-  <div class="mx-auto table table-compact">
-      <div id="basket_table">
-      </div>
+      {% if mh %}
+      <tr>
+        {% for k in mh %}
+            <th>{{ k }}</th>
+        {% endfor %}
+        <th>qty</th>
+      </tr>
+        {% for tr in md %}
+      <tr>
+          {% for v in tr %}
+          {% if (v | int) >= 0 or (v | int) < 0   %}
+            <td>{{ v | int }}</td>
+          {% else %}
+          <td><input name="client_name[]" class="hidden" value='{{ v }}'>{{ v }}</td>
+          {% endif %}
+          {% endfor %}
+            <td>
+              <input name="qty[]" type="number" class="input input-primary input-bordered input-sm" min="0" value="0">
+            </td>
+        </tr>
+        {% endfor %}
+        {%  endif %}
+        <tr>
+          <td colspan="3">
+            <input type="button"
+            class="btn btn-primary btn-outline btn-block"
+            id="copyButton"
+            value="SEND"/>
+          </td>
+        </tr>
+      </table>
+  </form>
+  </div> 
+  <!-- end of area 1 left side form input -->
+{% endblock content %}
+{% block basket %}
+    <!-- right side basket area -->
+      <form action="/post_basket/" method="POST">
+        <div id="basket_table" class="stats stats-vertical shadow">
+        </div>
         <div>
           <input type="submit"
-          class="btn btn-primary btn-outline btn-block"
+          class="btn btn-primary btn-block btn-outline"
           value="basket"/>
         </div>
+      </form>
   </div>
-</form>
-</div>
-{% endblock content %}
+<!-- end of seperation content -->
+{% endblock basket %}
+
+
+
+
