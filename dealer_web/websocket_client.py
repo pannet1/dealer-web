@@ -6,9 +6,6 @@ class WebsocketClient(threading.Thread):
     def __init__(self, kwargs, lst_tkn):
         self.ticks = {}
         self.token_list = lst_tkn
-        self.correlation_id = "abc123"
-        self.action = 1
-        self.mode = 1
         self.auth_token = kwargs['auth_token'],
         self.api_key = kwargs['api_key'],
         self.client_code = kwargs['client_code'],
@@ -17,24 +14,12 @@ class WebsocketClient(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        lst_keys = ['token', 'last_traded_price']
-        fltrd = {k: v for k, v in msg.items() if k in lst_keys}
-        fltrd['ltp'] = fltrd.pop('last_traded_price')
-        fltrd['symboltoken'] = int(fltrd.pop('token'))
-        # Get the value of "token" from the msg dictionary
-        token_value = fltrd.get("symboltoken")
-        # Check if the token value exists as a key in the ticks dictionary
-        if token_value in self.ticks:
-            # Update the values for the existing key
-            self.ticks[token_value].update(fltrd)
-        else:
-            # Add a new key-value pair to the ticks dictionary
-            self.ticks[token_value] = fltrd
+        self.ticks[int(msg.get('token'))] = msg.get(
+            'last_traded_price') / 100
 
     def on_open(self, wsapp):
         print("on open")
-        self.sws.subscribe(self.correlation_id, self.mode, self.token_list)
-        # self.sws.unsubscribe(self.correlation_id, self.mode, self.token_list1)
+        self.subscribe("subs1", 1, self.token_list)
 
     def on_error(self, wsapp, error):
         print(error)
@@ -53,19 +38,35 @@ class WebsocketClient(threading.Thread):
         self.sws.on_close = self.on_close
         self.sws.connect()
 
+    def subscribe(self, correlation_id, mode, lst_token):
+        print("subscribe")
+        self.sws.subscribe(correlation_id, mode, lst_token)
+
+    def unsubscribe(self, correlation_id, mode, lst_token):
+        # self.sws.unsubscribe(correlation_id, mode, self.token_list)
+        pass
+
 
 if __name__ == "__main__":
     import user
-    import time
 
     def get_cred():
+        print(user)
         h = user.get_broker_by_id("HARSHITBONI")
-        dct = dict(
-            auth_token=h.sess['data']['jwtToken'].split(' ')[1],
-            api_key=h._api_key,
-            client_code=h._user_id,
-            feed_token=h.obj.feed_token
-        )
+        if (
+            h is not None and
+            h.sess is not None and
+            h.sess.get['data'] is not None and
+            h.sess['data'].get('jwtToken') is not None and
+            h.sess['data'].get('jwtToken').split(' ')[1] is not None
+        ):
+
+            dct = dict(
+                auth_token=h.sess['data']['jwtToken'].split(' ')[1],
+                api_key=h._api_key,
+                client_code=h._user_id,
+                feed_token=h.obj.feed_token
+            )
         return dct
     dct = get_cred()
     token_list = [
@@ -79,4 +80,3 @@ if __name__ == "__main__":
 
     while True:
         print(t1.ticks)
-        time.sleep(10)

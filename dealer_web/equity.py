@@ -2,54 +2,7 @@ import pandas as pd
 import pendulum
 from breakout import TRADE_DAY_TMINUS, dpath, futil, tutil
 from breakout import Backtest, Live
-from SmartApi.smartWebSocketV2 import SmartWebSocketV2
-import threading
-
-
-class WebsocketClient(threading.Thread):
-    def __init__(self, kwargs, lst_tkn):
-        self.ticks = {}
-        self.token_list = lst_tkn
-        self.auth_token = kwargs['auth_token'],
-        self.api_key = kwargs['api_key'],
-        self.client_code = kwargs['client_code'],
-        self.feed_token = kwargs['feed_token']
-        self.sws = SmartWebSocketV2(**kwargs)
-        threading.Thread.__init__(self)
-
-    def on_data(self, wsapp, msg):
-        self.ticks[int(msg.get('token'))] = msg.get(
-            'last_traded_price') / 100
-
-    def on_open(self, wsapp):
-        print("on open")
-        self.subscribe("subs1", 1, self.token_list)
-
-    def on_error(self, wsapp, error):
-        print(error)
-
-    def on_close(self, wsapp):
-        print("Close")
-
-    def close_connection(self):
-        self.sws.close_connection()
-
-    def run(self):
-        # Assign the callbacks.
-        self.sws.on_open = self.on_open
-        self.sws.on_data = self.on_data
-        self.sws.on_error = self.on_error
-        self.sws.on_close = self.on_close
-        self.sws.connect()
-
-    def subscribe(self, correlation_id, mode, lst_token):
-        print("subscribe")
-        self.sws.subscribe(correlation_id, mode, lst_token)
-
-    def unsubscribe(self, correlation_id, mode, lst_token):
-        # self.sws.unsubscribe(correlation_id, mode, self.token_list)
-        pass
-
+from websocket_client import WebsocketClient
 
 if __name__ == "__main__":
     if TRADE_DAY_TMINUS == 0:
@@ -77,7 +30,7 @@ if __name__ == "__main__":
         t1.start()
         while (
                 not any(t1.ticks)
-                ):
+        ):
             print(f"{t1.ticks} is empty ?")
             tutil.slp_til_nxt_sec
         eqty.df['ltp'] = None
@@ -134,4 +87,5 @@ if __name__ == "__main__":
         # get a subset of dataframe with entry conditons
         #
         eqty.entries(eqty.df)
+        eqty.stops(eqty.df)
         eqty.stops(eqty.df)
