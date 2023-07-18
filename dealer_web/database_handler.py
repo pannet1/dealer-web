@@ -71,3 +71,81 @@ class DatabaseHandler:
             self.execute_query(query, tuple(data.values()))
         except sqlite3.Error as e:
             print(f"Error inserting data: {e}")
+
+    def drop_table(self, table_name: str) -> None:
+        try:
+            query = f"DROP TABLE IF EXISTS {table_name}"
+            self.execute_query(query)
+        except sqlite3.Error as e:
+            print(f"Error dropping table: {e}")
+
+
+if __name__ == "__main__":
+    # Create an instance of the DatabaseHandler
+    handler = DatabaseHandler("spread.db")
+
+    # Connect to the database
+    handler.connect()
+    handler.drop_table("spread")
+    # Create the "spread" table
+    handler.create_table("spread", ["id INTEGER PRIMARY KEY", "userid TEXT", "name TEXT", "mtm INTEGER",
+                         "tp INTEGER", "sl INTEGER", "trail_after INTEGER", "trail_at INTEGER", "status INTEGER"])
+
+    # Insert sample data into the "spread" table
+    spread_data = {
+        "id": 1,
+        "userid": "user1",
+        "name": "Sample Spread",
+        "mtm": 100,
+        "tp": 10,
+        "sl": 5,
+        "trail_after": 20,
+        "trail_at": 15,
+        "status": 1}
+    handler.insert_data("spread", spread_data)
+
+    handler.drop_table("items")
+    # Create the "items" table
+    handler.create_table("items", ["id INTEGER PRIMARY KEY", "spread_id INTEGER", "instrument TEXT",
+                         "exchange TEXT", "entry REAL", "side INTEGER", "quantity INTEGER", "mtm INTEGER", "ltp REAL"])
+
+    items_data = {
+        "id": 1,
+        "spread_id": 1,
+        "instrument": "STOCK CE",
+        "exchange": "NFO",
+        "entry": 100,
+        "side": 1,
+        "quantity": 25,
+        "mtm": 10,
+        "ltp": 105.5
+    }
+    handler.insert_data("items", items_data)
+
+    items_data = {
+        "id": 2,
+        "spread_id": 1,
+        "instrument": "Stock PE",
+        "exchange": "NFO",
+        "entry": 100,
+        "side": -1,
+        "quantity": 25,
+        "mtm": 10,
+        "ltp": 105.5
+    }
+    handler.insert_data("items", items_data)
+
+    query = """
+        SELECT items.*
+        FROM items
+        INNER JOIN spread ON items.spread_id = spread.id
+        WHERE spread.id = ?
+    """
+    spread_id = 1  # The related spread_id to filter items
+    items = handler.fetch_data(query, (spread_id,))
+
+    # Print the retrieved items
+    for item in items:
+        print(item)
+    # Disconnect from the database
+    handler.disconnect()
