@@ -83,15 +83,15 @@ class DatabaseHandler:
 if __name__ == "__main__":
     # Create an instance of the DatabaseHandler
     handler = DatabaseHandler("spread.db")
-
-    # Connect to the database
     handler.connect()
     handler.drop_table("spread")
+    handler.drop_table("items")
     # Create the "spread" table
-    handler.create_table("spread", ["id INTEGER PRIMARY KEY", "userid TEXT", "name TEXT", "mtm INTEGER",
-                         "tp INTEGER", "sl INTEGER", "trail_after INTEGER", "trail_at INTEGER", "status INTEGER"])
-
-    # Insert sample data into the "spread" table
+    handler.create_table("spread", ["id INTEGER PRIMARY KEY", "userid TEXT",
+                                    "name TEXT", "mtm INTEGER", "tp INTEGER",
+                                    "sl INTEGER", "trail_after INTEGER",
+                                    "trail_at INTEGER", "status INTEGER",
+                                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])    # Insert sample data into the "spread" table
     spread_data = {
         "id": 1,
         "userid": "user1",
@@ -103,35 +103,46 @@ if __name__ == "__main__":
         "trail_at": 15,
         "status": 1}
     handler.insert_data("spread", spread_data)
-
-    handler.drop_table("items")
     # Create the "items" table
-    handler.create_table("items", ["id INTEGER PRIMARY KEY", "spread_id INTEGER", "instrument TEXT",
-                         "exchange TEXT", "entry REAL", "side INTEGER", "quantity INTEGER", "mtm INTEGER", "ltp REAL"])
-
+    handler.create_table("items", ["id INTEGER PRIMARY KEY",
+                                   "spread_id INTEGER", "instrument TEXT",
+                                   "exchange TEXT", "entry REAL",
+                                   "side INTEGER", "quantity INTEGER",
+                                   "mtm INTEGER", "ltp REAL"])
+    # Create the "items" update_mtm_trigger
+    query = """
+        CREATE TRIGGER update_mtm_trigger
+        AFTER UPDATE OF ltp ON items
+        FOR EACH ROW
+        BEGIN
+            UPDATE items
+            SET mtm = (NEW.side * NEW.entry) + (-1 * NEW.side * NEW.ltp)
+            WHERE id = NEW.id;
+        END;
+    """
+    handler.execute_query(query)
     items_data = {
         "id": 1,
         "spread_id": 1,
-        "instrument": "STOCK CE",
+        "instrument": "STOCKCE",
         "exchange": "NFO",
-        "entry": 100,
+        "entry": 90,
         "side": 1,
         "quantity": 25,
-        "mtm": 10,
-        "ltp": 105.5
+        "mtm": 0,
+        "ltp": 10.5
     }
     handler.insert_data("items", items_data)
-
     items_data = {
         "id": 2,
         "spread_id": 1,
-        "instrument": "Stock PE",
+        "instrument": "BANKNIFTY23-AUG-12",
         "exchange": "NFO",
         "entry": 100,
         "side": -1,
         "quantity": 25,
-        "mtm": 10,
-        "ltp": 105.5
+        "mtm": 0,
+        "ltp": 20.5
     }
     handler.insert_data("items", items_data)
 
@@ -139,13 +150,32 @@ if __name__ == "__main__":
         SELECT items.*
         FROM items
         INNER JOIN spread ON items.spread_id = spread.id
-        WHERE spread.id = ?
     """
-    spread_id = 1  # The related spread_id to filter items
-    items = handler.fetch_data(query, (spread_id,))
+    items = handler.fetch_data(query, )
 
     # Print the retrieved items
     for item in items:
         print(item)
+
+    updated_item = {
+        "instrument": "STOCKCE",
+        "ltp": 150.0  # Updated ltp value
+    }
+    # Update the row, excluding the 'mtm' field
+    query = """
+        UPDATE items
+        SET ltp = :ltp
+        WHERE instrument = :instrument
+    """
+    handler.execute_query(query, updated_item)
+
+    # Fetch the updated data from the "items" table
+    query = "SELECT * FROM items"
+    updated_items = handler.fetch_data(query, )
+
+    # Print the updated item
+    for item in updated_items:
+        print(item)
+
     # Disconnect from the database
     handler.disconnect()
