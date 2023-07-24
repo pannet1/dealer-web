@@ -1,13 +1,25 @@
 from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict, Any, List, Tuple
+from toolkit.fileutils import Fileutils
 
 
 class DatabaseHandler:
     def __init__(self, db_name: str) -> None:
-        self.db_name = db_name
-        self.connection = sqlite3.connect(self.db_name)
+        mtime = Fileutils().get_file_mtime(db_name)
+        self.connection = sqlite3.connect(db_name)
         self.cursor = self.connection.cursor()
+        if mtime == "file_not_found":
+            self.create_table("spread", ["id INTEGER PRIMARY KEY",
+                                         "name TEXT", "mtm INTEGER", "tp INTEGER",
+                                         "sl INTEGER", "trail_after INTEGER",
+                                         "trail_at INTEGER", "status INTEGER",
+                                         "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])    # Insert sample data into the "spread" table
+            self.create_table("items", ["id INTEGER PRIMARY KEY",
+                                        "spread_id INTEGER", "instrument TEXT",
+                                        "exchange TEXT", "entry REAL",
+                                        "side INTEGER", "quantity INTEGER",
+                                        "mtm INTEGER", "ltp REAL"])
 
     def disconnect(self) -> None:
         try:
@@ -18,12 +30,13 @@ class DatabaseHandler:
 
     def execute_query(self,
                       query: str,
-                      params: Optional[Tuple[Any, ...]] = None
+                      params: Optional[Tuple[Any, Any]] = None
                       ) -> None:
         try:
             if self.cursor:
                 if params:
                     self.cursor.execute(query, params)
+
                 else:
                     self.cursor.execute(query)
 
@@ -79,7 +92,7 @@ class DatabaseHandler:
 
 if __name__ == "__main__":
     # Create an instance of the DatabaseHandler
-    handler = DatabaseHandler("spread.db")
+    handler = DatabaseHandler("../../../spread.db")
     # Before creating the triggers, set the recursive_triggers pragma to ON
     handler.drop_table("spread")
     handler.drop_table("items")
@@ -111,18 +124,18 @@ if __name__ == "__main__":
     END'
     handler.execute_query(query)
 
-      INSERT DATA 
+      INSERT DATA
     """
     spread_data_1 = {
         "name": "First Spread",
-        "mtm": 100,
-        "tp": 10,
-        "sl": 5,
-        "trail_after": 20,
-        "trail_at": 15,
+        "mtm": 0,
+        "tp": 80,
+        "sl": 50,
+        "trail_after": 50,
+        "trail_at": 40,
         "status": 1}
     spread_data_2 = {
-        "name": "Sample Spread 2",
+        "name": "Second Spread 2",
         "mtm": 100,
         "tp": 10,
         "sl": 5,
@@ -138,9 +151,9 @@ if __name__ == "__main__":
         "exchange": "NFO",
         "entry": 100,
         "side": 1,
-        "quantity": 300,
-        "mtm": -100,
-        "ltp": 101
+        "quantity": 10,
+        "mtm": 0,
+        "ltp": 100
     }
     items_data_2 = {
         "spread_id": 1,
@@ -148,9 +161,9 @@ if __name__ == "__main__":
         "exchange": "NFO",
         "entry": 100,
         "side": -1,
-        "quantity": 1500,
-        "mtm": 100,
-        "ltp": 20.5
+        "quantity": 100,
+        "mtm": 0,
+        "ltp": 100
     }
     handler.insert_data("items", items_data_1)
     handler.insert_data("items", items_data_2)
@@ -170,11 +183,11 @@ if __name__ == "__main__":
     """
     updated_item_1 = {
         "instrument": "ACC27JUL231840CE",
-        "ltp": 101  # Updated ltp value
+        "ltp": 100  # Updated ltp value
     }
     updated_item_2 = {
         "instrument": "PEL27JUL23920PE",
-        "ltp": 101  # Updated ltp value
+        "ltp": 100  # Updated ltp value
     }
     # Update the row, excluding the 'mtm' field
     query = """
