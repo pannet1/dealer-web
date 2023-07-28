@@ -6,13 +6,35 @@ import inspect
 import user
 from typing import List, Optional
 import uvicorn
+from database_handler import DatabaseHandler
 
+handler = DatabaseHandler("../../../spread.db")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
-pages = ['home', 'margins', 'orders', 'trades', 'positions', 'new', 'basket']
+pages = ['home', 'margins', 'orders', 'trades',
+         'positions', 'new', 'basket', 'spreads']
+"""
+POST methods
+"""
 
-# POST methods
+
+@app.post("/spread")
+async def post_spread(request: Request):
+    form_data = await request.form()
+    spread_data = {
+        "name": form_data.get("name"),
+        "tp": int(form_data.get("tp")),
+        "sl": int(form_data.get("sl")),
+        "trail_after": int(form_data.get("trail_after")),
+        "trail_at": int(form_data.get("trail_at")),
+        "status": 0,
+        "capital": 0,
+        "mtm": 0,
+        "max_mtm": 0,
+    }
+    handler.insert_data("spread", spread_data)
+    return {"message": "Spread data inserted successfully!"}
 
 
 @app.post("/orders/")
@@ -234,7 +256,16 @@ async def posted_basket(request: Request,
     return jt.TemplateResponse("table.html", ctx)
 
 
-# GET methods
+@app.post("/toggle_status")
+async def toggle_status(id: int, status: int):
+    handler.update_data("spread", id, {"status": status})
+    return {"status": status}
+
+"""
+GET methods
+"""
+
+
 @app.get("/order_cancel/")
 async def order_cancel(request: Request,
                        client_name: str,
@@ -670,6 +701,41 @@ async def orderbook(request: Request,
                 ctx['th'] = th
                 ctx['data'] = body
     return jt.TemplateResponse("table.html", ctx)
+
+
+@app.get("/spreads", response_class=HTMLResponse)
+async def spreads(request: Request):
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    query = """
+        SELECT spread.*
+        FROM spread
+        WHERE status >= 0
+        ORDER BY id DESC
+    """
+    spreads = handler.fetch_data(query)
+
+    # Fetch related items data for each spread and add it to the context
+    for spread in spreads:
+        items_query = f"""
+            SELECT items.*
+            FROM items
+            WHERE spread_id = {spread['id']}
+        """
+        items = handler.fetch_data(items_query)
+        spread['items'] = items
+
+    ctx['spreads'] = spreads
+    return jt.TemplateResponse("spreads.html", ctx)
+
+
+@app.get("/spread", response_class=HTMLResponse)
+async def get_spread(request: Request):
+    ctx = {"request": request,
+           "title": inspect.stack()[0][3],
+           'pages': pages}
+    return jt.TemplateResponse("new_spread.html", ctx)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

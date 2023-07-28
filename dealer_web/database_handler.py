@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sqlite3
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union
 from toolkit.fileutils import Fileutils
 
 
@@ -10,16 +10,20 @@ class DatabaseHandler:
         self.connection = sqlite3.connect(db_name)
         self.cursor = self.connection.cursor()
         if mtime == "file_not_found":
-            self.create_table("spread", ["id INTEGER PRIMARY KEY",
-                                         "name TEXT", "mtm INTEGER", "tp INTEGER",
-                                         "sl INTEGER", "trail_after INTEGER",
-                                         "trail_at INTEGER", "status INTEGER",
-                                         "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])    # Insert sample data into the "spread" table
-            self.create_table("items", ["id INTEGER PRIMARY KEY",
-                                        "spread_id INTEGER", "instrument TEXT",
-                                        "exchange TEXT", "entry REAL",
-                                        "side INTEGER", "quantity INTEGER",
-                                        "mtm INTEGER", "ltp REAL"])
+            self.create_table("spread",
+                              ["id INTEGER PRIMARY KEY",
+                               "name TEXT", "capital INTEGER",
+                               "mtm INTEGER", "tp INTEGER",
+                               "sl INTEGER", "max_mtm INTEGER",
+                               "trail_after INTEGER",
+                               "trail_at INTEGER", "status INTEGER",
+                               "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])
+            self.create_table("items",
+                              ["id INTEGER PRIMARY KEY",
+                               "spread_id INTEGER", "instrument TEXT",
+                               "exchange TEXT", "entry REAL",
+                               "side INTEGER", "quantity INTEGER",
+                               "mtm INTEGER", "ltp REAL"])
 
     def disconnect(self) -> None:
         try:
@@ -44,7 +48,10 @@ class DatabaseHandler:
         except sqlite3.Error as e:
             print(f"Error executing query: {e}")
 
-    def fetch_data(self, query: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
+    def fetch_data(
+        self, query: str,
+        params: Optional[Tuple[Any, ...]] = None
+    ) -> List[Any, Dict[str, Any]]:
         try:
             if self.cursor:
                 if params:
@@ -82,6 +89,17 @@ class DatabaseHandler:
         except sqlite3.Error as e:
             print(f"Error inserting data: {e}")
 
+    def update_data(self, table_name: str, item_id: Union[int, str], data: Dict[str, Any]):
+        try:
+            if isinstance(data, dict):
+                print(data)
+            set_values = ", ".join(f"{key} = ?" for key in data.keys())
+            query = f"UPDATE {table_name} SET {set_values} WHERE id = ?"
+            params = list(data.values()) + [item_id]
+            self.execute_query(query, params)
+        except sqlite3.Error as e:
+            print(f"Error updating data: {e}")
+
     def drop_table(self, table_name: str) -> None:
         try:
             query = f"DROP TABLE IF EXISTS {table_name}"
@@ -100,11 +118,14 @@ if __name__ == "__main__":
     """
     create tables
     """
-    handler.create_table("spread", ["id INTEGER PRIMARY KEY",
-                                    "name TEXT", "mtm INTEGER", "tp INTEGER",
-                                    "sl INTEGER", "trail_after INTEGER",
-                                    "trail_at INTEGER", "status INTEGER",
-                                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])    # Insert sample data into the "spread" table
+    handler.create_table("spread",
+                         ["id INTEGER PRIMARY KEY",
+                          "name TEXT", "capital INTEGER",
+                          "mtm INTEGER", "tp INTEGER",
+                          "sl INTEGER", "max_mtm INTEGER",
+                          "trail_after INTEGER",
+                          "trail_at INTEGER", "status INTEGER",
+                          "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])
     # Create the "items" table
     handler.create_table("items", ["id INTEGER PRIMARY KEY",
                                    "spread_id INTEGER", "instrument TEXT",
@@ -128,17 +149,21 @@ if __name__ == "__main__":
     """
     spread_data_1 = {
         "name": "First Spread",
+        "capital": 100,
         "mtm": 0,
         "tp": 80,
         "sl": 50,
+        "max_mtm": 0,
         "trail_after": 50,
         "trail_at": 40,
         "status": 1}
     spread_data_2 = {
         "name": "Second Spread 2",
+        "capital": 100,
         "mtm": 100,
         "tp": 10,
         "sl": 5,
+        "max_mtm": 100,
         "trail_after": 20,
         "trail_at": 15,
         "status": 1}
@@ -149,10 +174,10 @@ if __name__ == "__main__":
         "spread_id": 1,
         "instrument": "PEL27JUL23920PE",
         "exchange": "NFO",
-        "entry": 100,
-        "side": 1,
-        "quantity": 10,
-        "mtm": 0,
+        "entry": 200,
+        "side": -1,
+        "quantity": 1,
+        "mtm": 200,
         "ltp": 100
     }
     items_data_2 = {
@@ -160,9 +185,9 @@ if __name__ == "__main__":
         "instrument": "ACC27JUL231840CE",
         "exchange": "NFO",
         "entry": 100,
-        "side": -1,
-        "quantity": 100,
-        "mtm": 0,
+        "side": 1,
+        "quantity": 2,
+        "mtm": -100,
         "ltp": 100
     }
     handler.insert_data("items", items_data_1)

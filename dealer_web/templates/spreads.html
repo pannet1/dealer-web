@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+<!-- The button to open modal -->
+{% block content %}
+ <div class="mx-auto relative bg-indigo-100 h-screen w-screen">
+  <div class="mb-5 overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Name</th>
+          <th>TP (%)</th>
+          <th>SL (%)</th>
+          <th>Trail After (%)</th>
+          <th>Trail At (%)</th>
+          <th>Capital (₹)</th>
+          <th>MTM (₹)</th>
+          <th>Max MTM (₹)</th>
+          <th>Created</th>
+          <th>
+            <label for="my-modal-4" class="btn btn-xs btn-primary btn-mod ">+</label>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for spread in spreads %}
+        <tr>
+          <td>
+          {% if spread.status == 0 %}
+            <input id="{{ spread.id }}" type="checkbox" name="status" class="toggle toggle-sm bg-red-300 checked:bg-green-500" onclick="toggleStatus({{ spread.id }}, 0)"/>  
+          {% elif spread.status == 1 %}
+            <input id="{{ spread.id}} "type="checkbox" name="status" class="toggle toggle-sm bg-red-300 checked:bg-green-500" checked onclick="toggleStatus({{ spread.id }}, 1)"/>  
+          {% endif %}
+          </td>
+          <td>{{ spread.name}}</td>
+          <td>{{ spread.tp }}</td>
+          <td>{{ spread.sl }}</td>
+          <td>{{ spread.trail_after }}</td>
+          <td>{{ spread.trail_at }}</td>
+          <td>{{ spread.capital }}</td>
+          <td>{{ spread.mtm }}</td>
+          <td>{{ spread.max_mtm }}</td>
+          <td>{{ spread.created_at }}</td>
+          <td class="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 24px; height: 24px; cursor: pointer;" onclick="toggleItems({{ spread.id }})">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <td>
+        </tr>
+        <!-- Hidden row for items table data -->
+        <tr id="items-row-{{ spread.id }}" style="display: none;">
+          <td colspan="10">
+            <!-- Add the table to display items data -->
+            <table>
+              <thead>
+                <th>Instrument</th>
+                <th>Quantity</th>
+                <th>Entry</th>
+                <th>LTP</th>
+                <th>MTM</th>
+              </thead>
+              <tbody>
+                {% for item in spread['items'] %}
+                <tr>
+                  <td>{{ item.instrument }}</td>
+                  <td>{{ item.side * item.quantity }}</td>
+                  <td>{{ item.entry }}</td>
+                  <td>{{ item.ltp }}</td>
+                  <td>{{ item.mtm }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <!-- Hidden row for items table data -->
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- Put this part before </body> tag -->
+  <input type="checkbox" id="my-modal-4" class="modal-toggle" />
+  <label for="my-modal-4" class="modal cursor-pointer">
+  <label class="modal-box relative" for="">
+  <label for="my-modal-4" class="btn btn-xs btn-circle absolute right-2 top-2">✕</label>
+  <h1 class="text-lg font-bold">New Spread</h1>
+        <form autocomplete="off" method="post" action="/spread" class="p-5 bg-gray-100 w-full max-w-lg">
+
+          <div class="form-control w-full">
+            <label for="name">
+              <span class="label">Name</span>
+            </label>
+            <input type="text" name="name" class="input input-sm input-bordered w-full" required>
+          </div>
+
+          <div class="form-control relative inline-block">
+            <label class="label">
+              <span class="label-text">SL</span>
+              <span class="label-text">TP</span>
+            </label>
+            <input type="number" name="sl" class="input input-sm input-bordered" style="width:49%"/>
+            <input type="number" name="tp" class="input input-sm input-bordered float-right" style="width:49%"/>
+          </div>
+
+          <div class="form-control relative inline-block">
+            <label class="label">
+              <span class="label-text">Trail after</span>
+              <span class="label-text">at</span>
+            </label>
+            <input type="number" name="trail_after" class="input input-sm input-bordered" style="width:49%"/>
+            <input type="number" name="trail_at" class="input input-sm input-bordered float-right" style="width:49%"/>
+          </div>
+          
+          <div class="form-control relative">
+            <label class="label">
+              <span class="label-text">&nbsp;</span>
+            </label>
+              <input type="submit" class="btn btn-primary btn-outline btn-block" value="Positions +"/>
+          </div>
+          
+        </form>
+  </label>
+  </label>
+
+{% endblock content %}
+

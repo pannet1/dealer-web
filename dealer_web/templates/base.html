@@ -11,6 +11,7 @@
     {% endif %}
     <script src="../static/requests.js"></script>
     <script src="../static/main.js"></script>
+    <!-- Add CSS to style the status circles -->
   </head>
   <body>
     <!-- navigation -->
@@ -42,6 +43,40 @@
 <script src="../static/autocomplete.js"></script>
 {%  endif %}
   <!--end o  new -->
+
+{% if title=='spreads' %}
+<script>
+function toggleStatus(spreadId, currentStatus) {
+  const newStatus = currentStatus === 0 ? 1 : 0;
+
+  fetch(`/toggle_status?id=${spreadId}&status=${newStatus}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    // Handle the response if needed
+    console.log(data);
+  })
+  .catch(error => {
+    // Handle errors if needed
+    console.error('Error:', error);
+  });
+}
+
+function toggleItems(spreadId) {
+  const itemsRow = document.getElementById(`items-row-${spreadId}`);
+  if (itemsRow.style.display === "none") {
+    itemsRow.style.display = "table-row";
+  } else {
+    itemsRow.style.display = "none";
+  }
+}
+</script>
+{% endif %}
+
 
 {% if title == 'basket' %}
 <script src="../static/new.js"></script>
