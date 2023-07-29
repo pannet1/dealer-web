@@ -20,7 +20,7 @@ class DatabaseHandler:
                                "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])
             self.create_table("items",
                               ["id INTEGER PRIMARY KEY",
-                               "spread_id INTEGER", "instrument TEXT",
+                               "spread_id TEXT", "symbol TEXT",
                                "exchange TEXT", "entry REAL",
                                "side INTEGER", "quantity INTEGER",
                                "mtm INTEGER", "ltp REAL"])
@@ -127,8 +127,8 @@ if __name__ == "__main__":
                           "trail_at INTEGER", "status INTEGER",
                           "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"])
     # Create the "items" table
-    handler.create_table("items", ["id INTEGER PRIMARY KEY",
-                                   "spread_id INTEGER", "instrument TEXT",
+    handler.create_table("items", ["id INTEGER PRIMARY KEY", "token TEXT",
+                                   "spread_id INTEGER", "symbol TEXT",
                                    "exchange TEXT", "entry REAL",
                                    "side INTEGER", "quantity INTEGER",
                                    "mtm INTEGER", "ltp REAL"])
@@ -169,10 +169,10 @@ if __name__ == "__main__":
         "status": 1}
     handler.insert_data("spread", spread_data_1)
     handler.insert_data("spread", spread_data_2)
-
     items_data_1 = {
         "spread_id": 1,
-        "instrument": "PEL27JUL23920PE",
+        "token": "73311",
+        "symbol": "HINDALCO31AUG23440PE",
         "exchange": "NFO",
         "entry": 200,
         "side": -1,
@@ -182,7 +182,8 @@ if __name__ == "__main__":
     }
     items_data_2 = {
         "spread_id": 1,
-        "instrument": "ACC27JUL231840CE",
+        "token": "73310",
+        "symbol": "HINDALCO31AUG23445CE",
         "exchange": "NFO",
         "entry": 100,
         "side": 1,
@@ -207,18 +208,20 @@ if __name__ == "__main__":
     UPDATE
     """
     updated_item_1 = {
-        "instrument": "ACC27JUL231840CE",
-        "ltp": 100  # Updated ltp value
+        "exchange": "NFO",
+        "token": "73311",
+        "ltp": 120  # Updated ltp value
     }
     updated_item_2 = {
-        "instrument": "PEL27JUL23920PE",
-        "ltp": 100  # Updated ltp value
+        "exchange": "NFO",
+        "token": "73310",
+        "ltp": 130  # Updated ltp value
     }
     # Update the row, excluding the 'mtm' field
     query = """
         UPDATE items
         SET ltp = :ltp
-        WHERE instrument = :instrument
+        WHERE exchange = :exchange and token = :token
     """
     handler.execute_query(query, updated_item_1)
     handler.execute_query(query, updated_item_2)

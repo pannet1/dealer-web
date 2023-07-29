@@ -1,9 +1,15 @@
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 import threading
+import time
 
 
 class WebsocketClient(threading.Thread):
     def __init__(self, kwargs, lst_tkn):
+        self.is_open = False
+        self.exch_str_int = {'NSE': 1, 'NFO': 2,
+                             'BSE': 3, 'MCX': 5, 'NCDEX': 7, 'CDS': 13}
+        self.exch_int_str = {1: 'NSE',  2: 'NFO',
+                             3: 'BSE',  5: 'MCX', 7: 'NCDEX', 13: 'CDS'}
         self.ticks = {}
         self.token_list = lst_tkn
         self.auth_token = kwargs['auth_token'],
@@ -14,21 +20,20 @@ class WebsocketClient(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        self.ticks[int(msg.get('token'))] = msg.get(
-            'last_traded_price') / 100
+        self.ticks = {self.exch_int_str[msg['exchange_type']] +
+                      ":" + str(msg['token']): msg['last_traded_price'] / 100}
 
     def on_open(self, wsapp):
         print("on open")
+        self.is_open = True
         self.subscribe("subs1", 1, self.token_list)
 
     def on_error(self, wsapp, error):
         print(error)
 
     def on_close(self, wsapp):
+        self.is_open = False
         print("Close")
-
-    def close_connection(self):
-        self.sws.close_connection()
 
     def run(self):
         # Assign the callbacks.
@@ -38,13 +43,15 @@ class WebsocketClient(threading.Thread):
         self.sws.on_close = self.on_close
         self.sws.connect()
 
+    def close_connection(self):
+        self.sws.close_connection()
+
     def subscribe(self, correlation_id, mode, lst_token):
         print("subscribe")
         self.sws.subscribe(correlation_id, mode, lst_token)
 
     def unsubscribe(self, correlation_id, mode, lst_token):
-        # self.sws.unsubscribe(correlation_id, mode, self.token_list)
-        pass
+        self.sws.unsubscribe(correlation_id, mode, lst_token)
 
 
 if __name__ == "__main__":
@@ -54,20 +61,22 @@ if __name__ == "__main__":
         print(user)
         h = user.get_broker_by_id("HARSHITBONI")
         if (
-            h is not None and
-            h.sess is not None and
-            h.sess.get['data'] is not None and
-            h.sess['data'].get('jwtToken') is not None and
-            h.sess['data'].get('jwtToken').split(' ')[1] is not None
+            h is not None
+            and isinstance(h.sess, dict)
         ):
+            sess = h.sess
+            if (
+                sess['data'] is not None and
+                sess['data'].get('jwtToken', False) is not None
+            ):
+                dct = dict(
+                    auth_token=h.sess['data']['jwtToken'].split(' ')[1],
+                    api_key=h._api_key,
+                    client_code=h._user_id,
+                    feed_token=h.obj.feed_token
+                )
+                return dct
 
-            dct = dict(
-                auth_token=h.sess['data']['jwtToken'].split(' ')[1],
-                api_key=h._api_key,
-                client_code=h._user_id,
-                feed_token=h.obj.feed_token
-            )
-        return dct
     dct = get_cred()
     token_list = [
         {
@@ -77,6 +86,14 @@ if __name__ == "__main__":
     ]
     t1 = WebsocketClient(dct, token_list)
     t1.start()
-
+    token_list = [
+        {
+            "exchangeType": 1,
+            "tokens": ["26022", "26023"]
+        }
+    ]
+    while t1.ticks == {}:
+        time.sleep(1)
     while True:
         print(t1.ticks)
+        t1.subscribe("subs1", 1, token_list)

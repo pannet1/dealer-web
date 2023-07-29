@@ -307,3 +307,28 @@ def get_tkn_fm_sym(sym):
         return token
     except Exception as e:
         print(f"{e} occured while get_tkn_fm_sym")
+
+
+def get_ws_symbols(sub_list):
+    try:
+        f = open(dumpfile)
+        main_list = json.load(f)
+        sub_list_with_tokens = [
+            {**sub_item, "token": next((item["token"] for item in main_list if item["symbol"]
+                                       == sub_item["symbol"] and item["exch_seg"] == sub_item["exch_seg"]), None)}
+            for sub_item in sub_list
+        ]
+        f.close
+    except Exception as e:
+        print(f"{e} occured while subscribe")
+    else:
+        return sub_list_with_tokens
+
+
+if __name__ == '__main__':
+    sub_list = [
+        {"symbol": 'PEL27JUL23920PE', "exch_seg": "NFO"},
+        {"symbol": 'PEL27JUL23920CE', "exch_seg": "NFO"},
+    ]
+    sub_list_with_tokens = get_ws_symbols(sub_list)
+    print(sub_list_with_tokens)

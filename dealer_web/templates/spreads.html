@@ -53,7 +53,7 @@
             <!-- Add the table to display items data -->
             <table>
               <thead>
-                <th>Instrument</th>
+                <th>Symbol</th>
                 <th>Quantity</th>
                 <th>Entry</th>
                 <th>LTP</th>
@@ -62,7 +62,7 @@
               <tbody>
                 {% for item in spread['items'] %}
                 <tr>
-                  <td>{{ item.instrument }}</td>
+                  <td>{{ item.symbol }}</td>
                   <td>{{ item.side * item.quantity }}</td>
                   <td>{{ item.entry }}</td>
                   <td>{{ item.ltp }}</td>
