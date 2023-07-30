@@ -1,103 +1,41 @@
 import random
 from toolkit.utilities import Utilities
-from toolkit.fileutils import Fileutils
-from database_handler import DatabaseHandler
+from spreaddb import SpreadDB
 import pandas as pd
-from copy import deepcopy
 
-# CONSTANTS
+
 DB = "../../../spread.db"
-qry_items = """
-    SELECT items.id, items.token, items.symbol, items.exchange, items.side, items.spread_id,
-    items.entry, items.quantity, items.ltp
-    FROM items, spread
-    WHERE spread.status >= 0
-    AND spread.id = items.spread_id
-"""
-qry_spread = """
-    SELECT spread.*
-    FROM spread
-    WHERE spread.status >= 0
-"""
-
-# OBJECTS
-handler = DatabaseHandler(DB)
-futils = Fileutils()
-
-# Methods
-items_data = handler.fetch_data(qry_items)
-spread_data = handler.fetch_data(qry_spread)
-
-# GLOBALS
-mtime = ""
+handler = SpreadDB(DB)
 
 
 def yield_random_price() -> float:
     return int(random.uniform(50, 200))
 
 
-def dump_memory_to_db():
-    for spread in spread_data:
-        param = deepcopy(spread)
-        param.pop('status')
-        id = param.pop('id')
-        handler.update_data("spread", id, param)
-
-    for item in items_data:
-        param = deepcopy(item)
-        id = param.pop('id')
-        handler.update_data("items", id, param)
-
-
-def read_symbols():
-    qry_symbols = """
-        SELECT exchange, token
-        FROM items, spread
-        WHERE spread.status >= 0
-        AND spread.id = items.spread_id
-    """
-    symbols = handler.fetch_data(qry_symbols)
-    # Use a set to store unique combinations of exchange and token
-    unique_exch_tokens = set()
-    for item in symbols:
-        exchange = item["exchange"]
-        token = str(item["token"])
-        exch_token = f"{exchange}:{token}"
-
-        # Add the combination to the set (which ensures uniqueness)
-        unique_exch_tokens.add(exch_token)
-    # Convert the set back to a list if needed
-    exch_token_list = list(unique_exch_tokens)
-    return exch_token_list
-
-
-lst_exch_token = read_symbols()
-
-
 def run(updated_item):
     def calculate_percentage_change(initial_mtm, new_mtm):
         if initial_mtm == 0:
-            return new_mtm  # Return the percentage change as the difference between new_mtm and initial_mtm
+            return new_mtm
         percentage = ((new_mtm - initial_mtm) / abs(initial_mtm)) * 100
         return round(percentage, 2)
 
     def unsigned_perc_change(initial_mtm, new_mtm):
         if initial_mtm == 0:
-            return new_mtm  # Return the percentage change as the difference between new_mtm and initial_mtm
+            return new_mtm
         percentage = ((new_mtm - initial_mtm) / initial_mtm) * 100
         return round(percentage, 2)
 
-    global mtime
-    newtime = futils.get_file_mtime(DB)
-    if newtime != mtime:
-        # Update the row, excluding the 'mtm' field
-        print(f"DB changed {mtime} != {newtime}")
-        mtime = newtime
-        dump_memory_to_db()
+    spread_data = handler.spread_data
+    items_data = handler.items_data
+    newtime = handler.get_file_mtime()
+    if newtime != handler.mtime:
+        print(f"DB changed {newtime} != {handler.mtime}")
+        handler.set_file_mtime(newtime)
+        handler.dump_memory("spread", spread_data, ['status'])
+        handler.dump_memory("items", items_data)
     else:
-        # Update item_data with the new ltp values from updated_item
         spread_mtm = {}
-        for item in items_data:
+        for item in handler.items_data:
             key = item["exchange"] + ":" + str(item["token"])
             if key in updated_item:
                 item["ltp"] = updated_item[key]
@@ -107,7 +45,7 @@ def run(updated_item):
                 spread_mtm[spread_id] = spread_mtm.get(
                     spread_id, 0) + item["mtm"]
 
-        for spread in spread_data:
+        for spread in handler.spread_data:
             spread_id = spread['id']
             spread['mtm'] = spread_mtm.get(spread_id, 0)
             spread['max_mtm'] = max(spread['max_mtm'], spread['mtm'])
@@ -139,14 +77,14 @@ def run(updated_item):
             else:
                 print(
                     f"{perc_curr_mtm}% = {spread['capital']} / {spread['mtm']} * 100")
-
+        handler.set_items(items_data)
+        handler.set_spread(spread_data)
         print(pd.DataFrame(spread_data))
         print(pd.DataFrame(items_data), "\n")
 
 
 while True:
+    lst_exch_token = handler.symbol_keys()
     updated_item = {k: yield_random_price() for k in lst_exch_token}
     run(updated_item)
-
-    # Fetch symbols inside the loop to get updated data
     Utilities().slp_for(1)
