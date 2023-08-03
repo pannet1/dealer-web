@@ -211,9 +211,11 @@ def margins(args=None):
     th, td, mh, md = [], [], [], []
     for a in ao:
         resp = a.margins
+        if resp.get('data') is not None:
+            resp['data']['userid'] = a._userid
         lst = resp_to_lst(resp)
         if not args:
-            args = ['net', 'availablecash', 'm2munrealized', 'utiliseddebits',
+            args = ['userid', 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
                     'utilisedpayout']
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
         if 'message' in th1:

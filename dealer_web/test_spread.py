@@ -1,15 +1,18 @@
+import random
+from toolkit.utilities import Utilities
+from spreaddb import SpreadDB
 import pandas as pd
 
 
-def db_changed(handler, newtime):
-    handler.dump_memory("spread", handler.spread_data, ['status'])
-    handler.dump_memory("items", handler.items_data)
-    handler.set_items(handler.fetch_data(handler.qry_items))
-    handler.set_spread(handler.fetch_data(handler.qry_spread))
-    handler.set_file_mtime(newtime)
+DB = "../../../spread.db"
+handler = SpreadDB(DB)
 
 
-def monitor(handler,  updated_item):
+def yield_random_price() -> float:
+    return int(random.uniform(50, 200))
+
+
+def run(updated_item):
     def calculate_percentage_change(initial_mtm, new_mtm):
         if initial_mtm == 0:
             return new_mtm
@@ -24,8 +27,19 @@ def monitor(handler,  updated_item):
 
     spread_data = handler.spread_data
     items_data = handler.items_data
+    newtime = handler.get_file_mtime()
+    print(f" if {newtime} != {handler.mtime}")
+    if newtime != handler.mtime:
+        handler.dump_memory("spread", spread_data, ['status'])
+        handler.dump_memory("items", items_data)
+        handler.set_items(handler.fetch_data(handler.qry_items))
+        handler.set_spread(handler.fetch_data(handler.qry_spread))
+        spread_data = handler.spread_data
+        items_data = handler.items_data
+        handler.set_file_mtime(newtime)
+        print("DB")
     spread_mtm = {}
-    for item in items_data:
+    for item in handler.items_data:
         key = item["exchange"] + ":" + str(item["token"])
         if key in updated_item:
             item["ltp"] = updated_item[key]
@@ -35,7 +49,7 @@ def monitor(handler,  updated_item):
             spread_mtm[spread_id] = spread_mtm.get(
                 spread_id, 0) + item["mtm"]
 
-    for spread in spread_data:
+    for spread in handler.spread_data:
         spread_id = spread['id']
         spread['mtm'] = spread_mtm.get(spread_id, 0)
         spread['max_mtm'] = max(spread['max_mtm'], spread['mtm'])
@@ -71,3 +85,10 @@ def monitor(handler,  updated_item):
     handler.set_spread(spread_data)
     print(pd.DataFrame(spread_data))
     print(pd.DataFrame(items_data), "\n")
+
+
+while True:
+    lst_exch_token = handler.symbol_keys()
+    updated_item = {k: yield_random_price() for k in lst_exch_token}
+    run(updated_item)
+    Utilities().slp_for(1)

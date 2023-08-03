@@ -17,7 +17,7 @@
           <th>Max MTM (₹)</th>
           <th>Created</th>
           <th>
-            <label for="my-modal-4" class="btn btn-xs btn-primary btn-mod ">+</label>
+            <label for="my-modal-4" class="btn btn-xs btn-primary btn-mod ">Quants</label>
           </th>
         </tr>
       </thead>
@@ -41,10 +41,16 @@
           <td>{{ spread.max_mtm }}</td>
           <td>{{ spread.created_at }}</td>
           <td class="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 24px; height: 24px; cursor: pointer;" onclick="toggleItems({{ spread.id }})">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 24px; height: 24px; cursor: pointer;" onclick="toggleItems({{ spread.id }})">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg> 
+            &nbsp;|&nbsp;
+            <label for="mod-spread" class="btn btn-xs btn-primary btn-mod ">+</label>
+            &nbsp;|&nbsp;
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20" stroke-width="1" stroke="currentColor" style="width: 24px; height: 24px; cursor: pointer;" onclick="toggleItems({{ spread.id }})">
+              <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.19a.844.844 0 01-.277-.71 5 5 0 019.947 0 .843.843 0 01-.277.71A6.975 6.975 0 0110 18a6.974 6.974 0 01-4.696-1.81z" />
+            </svg>
           <td>
         </tr>
         <!-- Hidden row for items table data -->
@@ -80,13 +86,65 @@
   </div>
 </div>
 
+<!-- add Modal spread -->
+  <input type="checkbox" id="mod-spread" class="modal-toggle" />
+  <label for="mod-spread" class="modal cursor-pointer">
+  <label class="modal-box relative" for="">
+  <label for="mod-spread" class="btn btn-xs btn-circle absolute right-2 top-2">✕</label>
+  <h1 class="text-lg font-bold">New Position</h1>
+      <form autocomplete="off" method="post" action="/spread" class="p-5 bg-gray-100 w-full max-w-lg">
 
-<!-- Put this part before </body> tag -->
+        <div class="form-control">
+          <label class="label">
+          </label>
+          <select class="select select-bordered">
+            <option disabled selected>Select User</option>
+            <option>Star Wars</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label cursor-pointer">
+            <span class="label-text text-lg">SELL</span>
+            <input id="txn" type="checkbox" name="txn" class="toggle toggle-lg bg-red-300 checked:bg-green-500"/>
+            <span class="label-text text-lg">BUY</span>
+          </label>
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Symbol</span>
+          </label>
+          <input type="text" name="name" class="input input-sm input-bordered" />
+        </div>
+
+        <div class="form-control relative inline-block">
+          <label class="label">
+            <span class="label-text">Entry</span>
+            <span class="label-text">Lot or Quantity</span>
+          </label>
+          <input type="number" name="entry" class="input input-sm input-bordered" style="width:49%"/>
+          <input type="number" name="qty" class="input input-sm input-bordered float-right" style="width:49%"/>
+        </div>
+
+        <div class="form-control relative">
+          <label class="label">
+            <span class="label-text">&nbsp;</span>
+          </label>
+            <input type="submit" class="btn btn-primary btn-outline btn-block" value="Positions +"/>
+        </div>
+        
+      </form>
+  </label>
+  </label>
+
+
+<!-- Add Quantsapp -->
   <input type="checkbox" id="my-modal-4" class="modal-toggle" />
   <label for="my-modal-4" class="modal cursor-pointer">
   <label class="modal-box relative" for="">
   <label for="my-modal-4" class="btn btn-xs btn-circle absolute right-2 top-2">✕</label>
-  <h1 class="text-lg font-bold">New Spread</h1>
+  <h1 class="text-lg font-bold">New Quantsapp</h1>
         <form autocomplete="off" method="post" action="/spread" class="p-5 bg-gray-100 w-full max-w-lg">
 
           <div class="form-control w-full">
@@ -118,7 +176,7 @@
             <label class="label">
               <span class="label-text">&nbsp;</span>
             </label>
-              <input type="submit" class="btn btn-primary btn-outline btn-block" value="Positions +"/>
+              <input type="submit" class="btn btn-primary btn-outline btn-block" value="Quants +"/>
           </div>
           
         </form>

@@ -149,7 +149,7 @@ if __name__ == "__main__":
     """
     spread_data_1 = {
         "name": "First Spread",
-        "capital": 100,
+        "capital": -176,
         "mtm": 0,
         "tp": 80,
         "sl": 50,
@@ -160,10 +160,10 @@ if __name__ == "__main__":
     spread_data_2 = {
         "name": "Second Spread 2",
         "capital": 100,
-        "mtm": 100,
+        "mtm": 0,
         "tp": 10,
         "sl": 5,
-        "max_mtm": 100,
+        "max_mtm": 0,
         "trail_after": 20,
         "trail_at": 15,
         "status": 1}
@@ -174,22 +174,22 @@ if __name__ == "__main__":
         "token": "73311",
         "symbol": "HINDALCO31AUG23440PE",
         "exchange": "NFO",
-        "entry": 200,
+        "entry": 0.5,
         "side": -1,
         "quantity": 1,
-        "mtm": 200,
-        "ltp": 100
+        "mtm": 0.5,
+        "ltp": 0.5
     }
     items_data_2 = {
         "spread_id": 1,
         "token": "73310",
         "symbol": "HINDALCO31AUG23445CE",
         "exchange": "NFO",
-        "entry": 100,
-        "side": 1,
-        "quantity": 2,
-        "mtm": -100,
-        "ltp": 100
+        "entry": 176,
+        "side": -1,
+        "quantity": 1,
+        "mtm": 0,
+        "ltp": 176
     }
     handler.insert_data("items", items_data_1)
     handler.insert_data("items", items_data_2)

@@ -45,27 +45,8 @@
   <!--end o  new -->
 
 {% if title=='spreads' %}
+  <script src="../static/spread.js"></<script>
 <script>
-function toggleStatus(spreadId, currentStatus) {
-  const newStatus = currentStatus === 0 ? 1 : 0;
-
-  fetch(`/toggle_status?id=${spreadId}&status=${newStatus}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-  .then(response => response.json())
-  .then(data => {
-    // Handle the response if needed
-    console.log(data);
-  })
-  .catch(error => {
-    // Handle errors if needed
-    console.error('Error:', error);
-  });
-}
-
 function toggleItems(spreadId) {
   const itemsRow = document.getElementById(`items-row-${spreadId}`);
   if (itemsRow.style.display === "none") {
@@ -74,7 +55,34 @@ function toggleItems(spreadId) {
     itemsRow.style.display = "none";
   }
 }
-</script>
+
+  const addFormButtons = document.querySelectorAll(".add-form-button");
+  
+  addFormButtons.forEach(button => {
+      button.addEventListener("click", async (event) => {
+          const selectedUser = button.getAttribute("data-user");
+          const selectedSymbol = button.getAttribute("data-symbol");
+          
+          // Create and insert the form row
+          const formRow = document.createElement("tr");
+          formRow.innerHTML = `
+              <td colspan="4">
+                  <form action="/submit_position" method="POST">
+                      <!-- ... Include the form fields here ... -->
+                      <input type="hidden" name="user" value="${selectedUser}">
+                      <input type="hidden" name="symbol" value="${selectedSymbol}">
+                      <input type="submit" value="Submit">
+                  </form>
+              </td>
+          `;
+          
+          // Insert the form row below the clicked row
+          const parentRow = button.parentNode.parentNode;
+          parentRow.parentNode.insertBefore(formRow, parentRow.nextSibling);
+      });
+  });
+  </script>
+
 {% endif %}
 
 
