@@ -24,6 +24,13 @@ class DatabaseHandler:
                                "exchange TEXT", "entry REAL",
                                "side INTEGER", "quantity INTEGER",
                                "mtm INTEGER", "ltp REAL"])
+            self.create_table("user",
+                              ["id INTEGER PRIMARY KEY",
+                               "user TEXT"])
+            self.create_table("spread_user",
+                              ["id INTEGER PRIMARY KEY",
+                               "spread_id INTEGER",
+                               "user_id INTEGER"])
 
     def disconnect(self) -> None:
         try:
@@ -114,6 +121,8 @@ if __name__ == "__main__":
     # Before creating the triggers, set the recursive_triggers pragma to ON
     handler.drop_table("spread")
     handler.drop_table("items")
+    handler.drop_table("user")
+    handler.drop_table("spread_user")
 
     """
     create tables
@@ -132,21 +141,14 @@ if __name__ == "__main__":
                                    "exchange TEXT", "entry REAL",
                                    "side INTEGER", "quantity INTEGER",
                                    "mtm INTEGER", "ltp REAL"])
-    """
-    TRIGGERS NOT USED FOR NOW
-
-    query = 'CREATE TRIGGER update_mtm_trigger
-    AFTER UPDATE OF ltp ON items
-    FOR EACH ROW
-    BEGIN
-    UPDATE items
-    SET mtm = (NEW.side * (NEW.ltp - NEW.entry)) * NEW.quantity
-    WHERE id = NEW.id
-    END'
-    handler.execute_query(query)
-
-      INSERT DATA
-    """
+    handler.create_table("user",
+                         ["id INTEGER PRIMARY KEY",
+                          "broker_id TEXT",
+                          "user TEXT"])
+    handler.create_table("spread_user",
+                         ["id INTEGER PRIMARY KEY",
+                          "spread_id INTEGER",
+                          "broker_id TEXT"])
     spread_data_1 = {
         "name": "First Spread",
         "capital": -176,
@@ -236,6 +238,29 @@ if __name__ == "__main__":
         where status >= 0
     """
     spreads = handler.fetch_data(query, )
+
+    # Insert Users
+    users_data = [
+        {"broker_id": "A1079542", "user": "AnjuAgrawal"},
+        {"broker_id": "K583959", "user": "KALPANAKATH"},
+        {"broker_id": "PETT1665", "user": "MAHESHKAATH"},
+        {"broker_id": "S1521310", "user": "SANDEEPAWAL"},
+        {"broker_id": "DESV1032", "user": "HARSHITBONI"},
+        {"broker_id": "P824460", "user": "Priyankarya"},
+        {"broker_id": "PETT1707", "user": "SANDEEPAHUF"},
+        {"broker_id": "R1001548", "user": "RaghavAgwal"},
+        {"broker_id": "D537510", "user": "DoyalKayyal"},
+    ]
+    for user_data in users_data:
+        query = "INSERT INTO user (broker_id, user) VALUES (?, ?)"
+        params = (user_data["broker_id"], user_data["user"])
+        handler.execute_query(query, params)
+
+    # Create Spread User table
+    handler.create_table("spread_user",
+                         ["id INTEGER PRIMARY KEY",
+                          "spread_id INTEGER",
+                          "broker_id TEXT"])
 
     # Print the retrieved items
     for spread in spreads:

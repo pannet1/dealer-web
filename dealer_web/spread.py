@@ -23,18 +23,19 @@ class WebsocketClient():
         ticks = {self.exch_int_str[msg['exchange_type']] +
                  ":" + str(msg['token']): msg['last_traded_price'] / 100}
         newtime = self.handler.get_file_mtime()
-        print(ticks)
+        print(f" {ticks} incoming ticks")
         if newtime != self.handler.mtime:
             if any(self.token_list):
-                print("self tokens not empty")
+                print(f"self tokens: {self.token_list} not empty")
                 self.unsubscribe(self.token_list)
             new_tokens = self.handler.kv_for_subscribing(self.exch_str_int)
             if any(new_tokens):
-                print("subscribing new tokens")
+                print(f" {new_tokens} subscribing new tokens")
                 self.subscribe(new_tokens)
                 self.token_list = new_tokens
             db_changed(self.handler, newtime)
         else:
+            print("monitor")
             monitor(self.handler, ticks)
 
     def on_open(self, wsapp):

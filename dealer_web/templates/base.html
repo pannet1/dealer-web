@@ -9,9 +9,14 @@
     {% if title == 'new' %}
     <link href="./../static/autocomplete.css" rel="stylesheet">
     {% endif %}
+    {% if title=='spreads' %}
+   <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
+/> 
+    {% endif %}
     <script src="../static/requests.js"></script>
     <script src="../static/main.js"></script>
-    <!-- Add CSS to style the status circles -->
   </head>
   <body>
     <!-- navigation -->
@@ -34,63 +39,7 @@
     {% endblock content %}
     {% block basket %}
     {% endblock basket %}
-
   </body>
-<!-- common func main.js moved to header -->
-
-{% if title == 'new' %}
-<script src="../static/new.js"></script>
-<script src="../static/autocomplete.js"></script>
-{%  endif %}
-  <!--end o  new -->
-
-{% if title=='spreads' %}
-  <script src="../static/spread.js"></<script>
-<script>
-function toggleItems(spreadId) {
-  const itemsRow = document.getElementById(`items-row-${spreadId}`);
-  if (itemsRow.style.display === "none") {
-    itemsRow.style.display = "table-row";
-  } else {
-    itemsRow.style.display = "none";
-  }
-}
-
-  const addFormButtons = document.querySelectorAll(".add-form-button");
-  
-  addFormButtons.forEach(button => {
-      button.addEventListener("click", async (event) => {
-          const selectedUser = button.getAttribute("data-user");
-          const selectedSymbol = button.getAttribute("data-symbol");
-          
-          // Create and insert the form row
-          const formRow = document.createElement("tr");
-          formRow.innerHTML = `
-              <td colspan="4">
-                  <form action="/submit_position" method="POST">
-                      <!-- ... Include the form fields here ... -->
-                      <input type="hidden" name="user" value="${selectedUser}">
-                      <input type="hidden" name="symbol" value="${selectedSymbol}">
-                      <input type="submit" value="Submit">
-                  </form>
-              </td>
-          `;
-          
-          // Insert the form row below the clicked row
-          const parentRow = button.parentNode.parentNode;
-          parentRow.parentNode.insertBefore(formRow, parentRow.nextSibling);
-      });
-  });
-  </script>
-
-{% endif %}
-
-
-{% if title == 'basket' %}
-<script src="../static/new.js"></script>
-<script src="../static/autocomplete.js"></script>
-{%  endif %}
-
 {% if title=='orders' %}
 <script> 
 /* consumed by modify and cancel order */ 
@@ -228,7 +177,23 @@ for(let i = 0; i < btnCncl.length; i++) {
 {% endif %}
 <!-- end of orders -->
 {% if title=='positions' %}
-<script src="../static/positions.js"></script>
+  <script src="../static/positions.js"></script>
 {% endif %}
-<!-- end of positions -->
+{% if title == 'new' %}
+  <script src="../static/new.js"></script>
+  <script src="../static/autocomplete.js"></script>
+{%  endif %}
+{% if title=='spreads' %}
+  <script src="../static/spread.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script>
+const select = new Choices('.js-choice', {
+      removeItemButton: true,
+    });
+  </script>
+{% endif %}
+{% if title =='basket' %}
+  <script src="../static/new.js"></script>
+  <script src="../static/autocomplete.js"></script>
+{%  endif %}
 </html>
