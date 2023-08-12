@@ -1,17 +1,28 @@
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 import threading
 import time
+from typing import List, Dict, Any
+from quantsap import db_changed, monitor
+from spreaddb import SpreadDB
 
 
 class WebsocketClient(threading.Thread):
-    def __init__(self, kwargs, lst_tkn):
+    def __init__(self, kwargs):
         self.is_open = False
         self.exch_str_int = {'NSE': 1, 'NFO': 2,
                              'BSE': 3, 'MCX': 5, 'NCDEX': 7, 'CDS': 13}
         self.exch_int_str = {1: 'NSE',  2: 'NFO',
                              3: 'BSE',  5: 'MCX', 7: 'NCDEX', 13: 'CDS'}
+        """
+        self.token_list = [
+            {
+                "exchangeType": 1,
+                "tokens": ["26000", "26009"],
+            }
+        ]
+        """
+        self.token_list = []
         self.ticks = {}
-        self.token_list = lst_tkn
         self.auth_token = kwargs['auth_token'],
         self.api_key = kwargs['api_key'],
         self.client_code = kwargs['client_code'],
@@ -26,13 +37,6 @@ class WebsocketClient(threading.Thread):
     def on_open(self, wsapp):
         print("on open")
         self.is_open = True
-        token_list = [
-            {
-                "exchangeType": 1,
-                "tokens": ["26011"]
-            }
-        ]
-        self.subscribe(token_list, "subs1", 1)
 
     def on_error(self, wsapp, error):
         print(error)
@@ -52,11 +56,10 @@ class WebsocketClient(threading.Thread):
     def close_connection(self):
         self.sws.close_connection()
 
-    def subscribe(self, lst_token, correlation_id, mode):
-        print("subscribe")
+    def subscribe(self, lst_token: List[Dict[str, Any]], correlation_id="spread", mode=1):
         self.sws.subscribe(correlation_id, mode, lst_token)
 
-    def unsubscribe(self, lst_token, correlation_id, mode):
+    def unsubscribe(self, lst_token, correlation_id="spread", mode=1):
         self.sws.unsubscribe(correlation_id, mode, lst_token)
 
 
@@ -82,24 +85,42 @@ if __name__ == "__main__":
                 )
                 return dct
 
+    handler = SpreadDB("../../../spread.db")
     dct = get_cred()
     print(dct)
-    token_list = [
-        {
-            "exchangeType": 1,
-            "tokens": ["26008"]
-        }
-    ]
-    t1 = WebsocketClient(dct, token_list)
+    t1 = WebsocketClient(dct)
     t1.start()
+
+    while len(t1.token_list) == 0:
+        t1.token_list = handler.kv_for_subscribing(t1.exch_str_int)
+        time.sleep(1)
+
+    while True:
+        print(f"ticks: {t1.ticks}")
+        curr_time = handler._get_curr_time()
+        last_time = handler.last_update_time.add(minutes=5)
+        if curr_time > last_time:
+            new_tokens = handler.kv_for_subscribing(t1.exch_str_int)
+            if any(new_tokens):
+                if any(t1.token_list) and t1.is_open:
+                    print(f"unsubscribing: {t1.token_list}")
+                    t1.unsubscribe(t1.token_list)
+                if t1.is_open:
+                    print(f"subscribing : {new_tokens} ")
+                    t1.subscribe(new_tokens)
+                    t1.token_list = new_tokens
+            db_changed(handler)
+            handler._set_update_time(last_time)
+        else:
+            print(f"{curr_time} > {last_time} {curr_time > last_time}")
+            monitor(handler, t1.ticks)
+        time.sleep(1)
+
+    """
     token_list = [
         {
             "exchangeType": 1,
             "tokens": ["26022", "26023"]
         }
     ]
-    while t1.ticks == {}:
-        time.sleep(1)
-    while True:
-        print(t1.ticks)
-        t1.subscribe("subs1", 1, token_list)
+    """

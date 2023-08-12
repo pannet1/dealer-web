@@ -58,7 +58,7 @@ class DatabaseHandler:
     def fetch_data(
         self, query: str,
         params: Optional[Tuple[Any, ...]] = None
-    ) -> List[Any, Dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         try:
             if self.cursor:
                 if params:
@@ -99,13 +99,16 @@ class DatabaseHandler:
     def update_data(self, table_name: str, item_id: Union[int, str], data: Dict[str, Any]):
         try:
             if isinstance(data, dict):
-                print(data)
-            set_values = ", ".join(f"{key} = ?" for key in data.keys())
-            query = f"UPDATE {table_name} SET {set_values} WHERE id = ?"
-            params = list(data.values()) + [item_id]
-            self.execute_query(query, params)
+                set_values = ", ".join(f"{key} = ?" for key in data.keys())
+                query = f"UPDATE {table_name} SET {set_values} WHERE id = ?"
+                params = list(data.values()) + [item_id]
+                self.execute_query(query, params)
+            else:
+                raise ValueError("Data must be a dictionary")
         except sqlite3.Error as e:
             print(f"Error updating data: {e}")
+        except Exception as e:
+            print(f"value error {e}")
 
     def drop_table(self, table_name: str) -> None:
         try:
@@ -171,6 +174,7 @@ if __name__ == "__main__":
         "status": 1}
     handler.insert_data("spread", spread_data_1)
     handler.insert_data("spread", spread_data_2)
+    """
     items_data_1 = {
         "spread_id": 1,
         "token": "73311",
@@ -195,7 +199,7 @@ if __name__ == "__main__":
     }
     handler.insert_data("items", items_data_1)
     handler.insert_data("items", items_data_2)
-
+    """
     query = """
         SELECT items.*
         FROM items
@@ -208,26 +212,26 @@ if __name__ == "__main__":
 
     """
     UPDATE
-    """
     updated_item_1 = {
         "exchange": "NFO",
-        "token": "73311",
+        "token": "127900",
         "ltp": 120  # Updated ltp value
     }
     updated_item_2 = {
         "exchange": "NFO",
-        "token": "73310",
+        "token": "127901",
         "ltp": 130  # Updated ltp value
     }
     # Update the row, excluding the 'mtm' field
-    query = """
-        UPDATE items
-        SET ltp = :ltp
-        WHERE exchange = :exchange and token = :token
+    # query = """
+    #   UPDATE items
+    #   SET ltp = :ltp
+    #   WHERE exchange = :exchange and token = :token
+    #   """
     """
     handler.execute_query(query, updated_item_1)
     handler.execute_query(query, updated_item_2)
-
+    """
     # Fetch the updated data from the "items" table
     query = "SELECT * FROM items"
     updated_items = handler.fetch_data(query, )

@@ -2,19 +2,23 @@ from toolkit.fileutils import Fileutils
 from database_handler import DatabaseHandler
 from copy import deepcopy
 from typing import Dict, List, Any
+import pendulum
 
 
 class SpreadDB(DatabaseHandler):
 
     def __init__(self, db_name: str) -> None:
         self.db_name = db_name
-        self.mtime = ""
+        self.last_update_time = self._get_curr_time().subtract(minutes=60)
         self.qry_items = """
-            SELECT items.id, items.token, items.symbol, items.exchange,
-            items.side, items.spread_id, items.entry, items.quantity, items.ltp
-            FROM items, spread
+        SELECT items.id, items.token, items.symbol, items.exchange,
+        items.side, items.spread_id, items.entry, items.quantity, items.ltp
+        FROM items
+        WHERE items.spread_id IN (
+            SELECT spread.id
+            FROM spread
             WHERE spread.status >= 0
-            AND spread.id = items.spread_id
+        )
         """
         self.qry_spread = """
             SELECT spread.*
@@ -31,17 +35,21 @@ class SpreadDB(DatabaseHandler):
         self.items_data = super().fetch_data(self.qry_items)
         self.spread_data = super().fetch_data(self.qry_spread)
 
-    def get_file_mtime(self):
-        return Fileutils().get_file_mtime(self.db_name)
+    def _get_file_mtime(self):
+        mtime = Fileutils().get_file_mtime(self.db_name)
+        return pendulum.from_format(mtime, 'YYYY-MM-DD HH:mm:ss')
+
+    def _set_update_time(self, ctime=None):
+        self.last_update_time = ctime if ctime else self._get_curr_time()
+
+    def _get_curr_time(self):
+        return pendulum.now('UTC').add(hours=5, minutes=30)
 
     def get_items(self):
         return self.fetch_data(self.qry_items)
 
     def get_spread(self):
         return self.fetch_data(self.qry_spread)
-
-    def set_file_mtime(self, mtime: str):
-        self.mtime = mtime
 
     def set_items(self, items_data: List[Dict[str, Any]]):
         self.items_data = items_data
@@ -52,12 +60,15 @@ class SpreadDB(DatabaseHandler):
     def dump_memory(self, table: str,
                     data: List[Dict[str, Any]],
                     lst_pop_keys=[]):
-        for dct in data:
-            param = deepcopy(dct)
-            for key in lst_pop_keys:
-                param.pop(key)
-            id = param.pop('id')
-            self.update_data(table, id, param)
+        try:
+            for dct in data:
+                param = deepcopy(dct)
+                for key in lst_pop_keys:
+                    param.pop(key)
+                id = param.pop('id')
+                self.update_data(table, id, param)
+        except Exception as e:
+            print(f" dump memory {e}")
 
     def symbol_keys(self):
         """
@@ -86,7 +97,6 @@ class SpreadDB(DatabaseHandler):
         for exchange, tokens in temp_dict.items():
             token_list.append(
                 {"exchangeType": exch_str_int[exchange], "tokens": list(tokens)})
-        print(token_list)
         return token_list
 
 

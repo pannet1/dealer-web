@@ -1,6 +1,9 @@
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 from quantsap import db_changed, monitor
 from spreaddb import SpreadDB
+from typing import List, Dict, Any
+import time
+import pendulum
 
 
 class WebsocketClient():
@@ -19,35 +22,48 @@ class WebsocketClient():
         self.feed_token = kwargs['feed_token']
         self.sws = SmartWebSocketV2(**kwargs)
 
+    def is_update_due(self, mtime):
+        try:
+            last_db_mtime = pendulum.from_format(mtime, 'YYYY-MM-DD HH:mm:ss')
+            delta_time = last_db_mtime.add(minutes=5)
+            current_time = pendulum.now()
+            true_or_false = current_time > delta_time
+        except Exception as e:
+            print(e)
+            return False
+        else:
+            print(f"is update: {true_or_false} ")
+            return true_or_false
+
     def on_data(self, wsapp, msg):
         ticks = {self.exch_int_str[msg['exchange_type']] +
                  ":" + str(msg['token']): msg['last_traded_price'] / 100}
+        print(f"on data: {ticks}")
         newtime = self.handler.get_file_mtime()
-        print(f" {ticks} incoming ticks")
-        if newtime != self.handler.mtime:
-            if any(self.token_list):
-                print(f"self tokens: {self.token_list} not empty")
-                self.unsubscribe(self.token_list)
+        if newtime != self.handler.mtime or self.is_update_due(newtime):
             new_tokens = self.handler.kv_for_subscribing(self.exch_str_int)
             if any(new_tokens):
-                print(f" {new_tokens} subscribing new tokens")
-                self.subscribe(new_tokens)
+                if any(self.token_list):
+                    print(f"self tokens: {self.token_list} not empty")
+                    self.unsubscribe(self.token_list)
+                # new_tokens += self.token_list
+                print(f"subscribing new: {new_tokens} ")
                 self.token_list = new_tokens
+                self.subscribe(new_tokens)
             db_changed(self.handler, newtime)
         else:
-            print("monitor")
             monitor(self.handler, ticks)
 
     def on_open(self, wsapp):
         print("on open")
-        lst = {
+        self.token_list = [{
             "exchangeType": 1,
-            "tokens": ["26011", "26012"]
-        },
-        self.subscribe(lst, correlation_id="as", mode=1)
+            "tokens": ["26000", "26009"],
+        }]
+        self.subscribe(self.token_list, correlation_id="as", mode=1)
 
     def on_error(self, wsapp, error):
-        print(error)
+        print("on error:", error)
 
     def on_close(self, wsapp):
         self.is_open = False
@@ -64,7 +80,7 @@ class WebsocketClient():
     def close_connection(self):
         self.sws.close_connection()
 
-    def subscribe(self, lst_token, correlation_id="spread", mode=1):
+    def subscribe(self, lst_token: List[Dict[str, Any]], correlation_id="spread", mode=1):
         self.sws.subscribe(correlation_id, mode, lst_token)
 
     def unsubscribe(self, lst_token, correlation_id="spread", mode=1):
@@ -76,7 +92,7 @@ if __name__ == "__main__":
 
     def get_cred():
         print(user)
-        h = user.get_broker_by_id("HARSHITBONI")
+        h = user.get_broker_by_id("AnjuAgrawal")
         if (
             h is not None
             and isinstance(h.sess, dict)
@@ -96,7 +112,9 @@ if __name__ == "__main__":
 
     dct = get_cred()
     t1 = WebsocketClient(dct)
-    t1.run()
+    while True:
+        t1.run()
+        time.sleep(5)
     """
     token_list = [
         {
@@ -110,10 +128,4 @@ if __name__ == "__main__":
             "tokens": ["26011"]
         }
     ]
-    while t1.ticks == {}:
-        print("sleeping")
-        time.sleep(1)
-    while True:
-        print(t1.ticks)
-        t1.subscribe("subs1", 1, token_list)
     """
