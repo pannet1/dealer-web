@@ -3,26 +3,60 @@ from omspy_brokers.angel_one import AngelOne
 from requests import get
 import json
 import random
+import pickle
 
 futil = Fileutils()
 sec_dir = "../../../"
 dumpfile = sec_dir + "symbols.json"
-users = futil.xls_to_dict(sec_dir + "ao_users.xls")
-ao = []
 
 
-for user in users:
-    a = AngelOne(user['user_id'], user['api_key'],
-                 user['totp'], user['password'])
-    if a.authenticate():
-        a._userid = user['user_id']
-        a._multiplier = user['multiplier']
-        a._max_loss = user['max_loss']
-        a._target = user['target']
-        a._disabled = user['disabled']
-        ao.append(a)
-    else:
-        print(f"unable to authenticate user {user['user_id']}")
+def write_to_pickle(pkl, ao_obj):
+    print("writing to pickle file for user: " + ao_obj._user_id)
+    dct = {
+        "user_id": ao_obj._user_id,
+        "api_key": ao_obj._api_key,
+        "totp": ao_obj._totp,
+        "password": ao_obj._password,
+        "access_token": ao_obj.access_token,
+        "refresh_token": ao_obj.refresh_token,
+        "feed_token": ao_obj.feed_token,
+        "client_name": ao_obj.client_name
+    }
+    with open(pkl, "wb") as f:
+        pickle.dump(dct, f)
+
+
+def get_login():
+    users = futil.xls_to_dict(sec_dir + "ao_users.xls")
+    ao = []
+    for user in users:
+        pklfile = sec_dir + user['user_id'] + ".pkl"
+        flag = futil.is_file_not_2day(pklfile)
+        if flag:
+            a = AngelOne(user['user_id'], user['api_key'],
+                         user['totp'], user['password'])
+        else:
+            with open(pklfile, "rb") as p:
+                print("loading from pickle file user: " + user['user_id'])
+                pkld = pickle.load(p)
+            a = AngelOne(pkld['user_id'], pkld['api_key'], pkld['totp'],
+                         pkld['password'], pkld['access_token'], pkld['refresh_token'],
+                         pkld['feed_token'])
+        if a.authenticate():
+            if flag:
+                write_to_pickle(pklfile, a)
+            a._userid = user['user_id']
+            a._multiplier = user['multiplier']
+            a._max_loss = user['max_loss']
+            a._target = user['target']
+            a._disabled = user['disabled']
+            ao.append(a)
+        else:
+            print(f"unable to authenticate user {user['user_id']}")
+    return ao
+
+
+ao = get_login()
 
 
 def random_broker() -> AngelOne:

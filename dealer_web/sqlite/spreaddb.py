@@ -1,5 +1,5 @@
 from toolkit.fileutils import Fileutils
-from database_handler import DatabaseHandler
+from sqlite.database_handler import DatabaseHandler
 from copy import deepcopy
 from typing import Dict, List, Any
 import pendulum

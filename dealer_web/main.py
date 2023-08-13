@@ -8,7 +8,7 @@ import inspect
 import user
 from typing import List, Optional
 import uvicorn
-from database_handler import DatabaseHandler
+from sqlite.spreaddb import SpreadDB
 
 
 try:
@@ -19,7 +19,7 @@ except (ImportError, ModuleNotFoundError):
     os.system(f"{sys.executable} -m pip install sqlite3")
     import sqlite3
 
-handler = DatabaseHandler("../../../spread.db")
+handler = SpreadDB("../../../spread.db")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")

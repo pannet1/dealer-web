@@ -33,7 +33,7 @@ const tblColCnt = (tableId, colNumber, ttlTagName) =>
   } // end try
   catch (ex)
   {
-     window.alert("Exception in function tblColCnt()\n" + ex);
+     console.log("Exception in function tblColCnt()\n" + ex);
   }
   finally
   {

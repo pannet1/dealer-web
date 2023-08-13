@@ -3,7 +3,7 @@ import threading
 import time
 from typing import List, Dict, Any
 from quantsap import db_changed, monitor
-from spreaddb import SpreadDB
+from sqlite.spreaddb import SpreadDB
 
 
 class WebsocketClient(threading.Thread):
@@ -70,20 +70,14 @@ if __name__ == "__main__":
         h = user.get_broker_by_id("HARSHITBONI")
         if (
             h is not None
-            and isinstance(h.sess, dict)
         ):
-            sess = h.sess
-            if (
-                sess['data'] is not None and
-                sess['data'].get('jwtToken', False) is not None
-            ):
-                dct = dict(
-                    auth_token=h.sess['data']['jwtToken'].split(' ')[1],
-                    api_key=h._api_key,
-                    client_code=h._user_id,
-                    feed_token=h.obj.feed_token
-                )
-                return dct
+            dct = dict(
+                auth_token=h.access_token,
+                api_key=h._api_key,
+                client_code=h._user_id,
+                feed_token=h.obj.feed_token,
+            )
+            return dct
 
     handler = SpreadDB("../../../spread.db")
     dct = get_cred()
@@ -114,7 +108,6 @@ if __name__ == "__main__":
         else:
             print(f"{curr_time} > {last_time} {curr_time > last_time}")
             monitor(handler, t1.ticks)
-        time.sleep(1)
 
     """
     token_list = [
