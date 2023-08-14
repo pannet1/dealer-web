@@ -45,6 +45,15 @@ class SpreadDB(DatabaseHandler):
     def _get_curr_time(self):
         return pendulum.now('UTC').add(hours=5, minutes=30)
 
+    def get_users(self, spread_id: int):
+        qry_users = """
+            SELECT user.user
+            FROM spread, user, spread_user
+            WHERE spread_user.broker_id = user.broker_id
+            AND spread.id =:spread_id
+        """
+        return self.fetch_data(qry_users, {"spread_id": spread_id})
+
     def get_items(self):
         return self.fetch_data(self.qry_items)
 
@@ -103,4 +112,5 @@ class SpreadDB(DatabaseHandler):
 if __name__ == "__main__":
     exch_str_int = {'NSE': 1, 'NFO': 2, 'BSE': 3,
                     'MCX': 5, 'NCDEX': 7, 'CDS': 13}
-    val = SpreadDB("../../../spread.db").kv_for_subscribing(exch_str_int)
+    handler = SpreadDB("../../../spread.db")
+    val = handler.kv_for_subscribing(exch_str_int)

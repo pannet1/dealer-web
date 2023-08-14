@@ -26,11 +26,12 @@ class DatabaseHandler:
                                "mtm INTEGER", "ltp REAL"])
             self.create_table("user",
                               ["id INTEGER PRIMARY KEY",
+                               "broker_id TEXT",
                                "user TEXT"])
             self.create_table("spread_user",
                               ["id INTEGER PRIMARY KEY",
                                "spread_id INTEGER",
-                               "user_id INTEGER"])
+                               "broker_id TEXT"])
 
     def disconnect(self) -> None:
         try:

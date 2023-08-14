@@ -67,7 +67,7 @@ if __name__ == "__main__":
     import user
 
     def get_cred():
-        h = user.get_broker_by_id("HARSHITBONI")
+        h = user.random_broker()
         if (
             h is not None
         ):
@@ -81,7 +81,6 @@ if __name__ == "__main__":
 
     handler = SpreadDB("../../../spread.db")
     dct = get_cred()
-    print(dct)
     t1 = WebsocketClient(dct)
     t1.start()
 
@@ -98,7 +97,6 @@ if __name__ == "__main__":
             if any(new_tokens):
                 if any(t1.token_list) and t1.is_open:
                     print(f"unsubscribing: {t1.token_list}")
-                    t1.unsubscribe(t1.token_list)
                 if t1.is_open:
                     print(f"subscribing : {new_tokens} ")
                     t1.subscribe(new_tokens)
@@ -106,8 +104,9 @@ if __name__ == "__main__":
             db_changed(handler)
             handler._set_update_time(last_time)
         else:
-            print(f"{curr_time} > {last_time} {curr_time > last_time}")
+            # print(f"{curr_time} > {last_time} {curr_time > last_time}")
             monitor(handler, t1.ticks)
+        time.sleep(1)
 
     """
     token_list = [

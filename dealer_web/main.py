@@ -11,14 +11,6 @@ import uvicorn
 from sqlite.spreaddb import SpreadDB
 
 
-try:
-    import os
-    import sys
-    import sqlite3
-except (ImportError, ModuleNotFoundError):
-    os.system(f"{sys.executable} -m pip install sqlite3")
-    import sqlite3
-
 handler = SpreadDB("../../../spread.db")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")

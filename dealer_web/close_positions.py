@@ -1,29 +1,32 @@
-from sqlite.spreaddb import SpreadDB
-import pendulum
+import user
 
 
-def get_curr_time():
-    tobj = pendulum.now('UTC').add(hours=5, minutes=30)
-    return tobj.format('YYYY-MM-DD HH:mm:ss')
+def get_positions_and_place_market_order(params):
+    print(params['number'] * params['value'])
+    return get_positions_and_place_limit_order
 
 
-def close_positions(spread_id, items_data, users, reason):
-    dct = {}
-    for item in items_data:
-        if item["spread_id"] == spread_id:
-            dct[spread_id] = {"now":  get_curr_time(),
-                              "last_update": get_curr_time(),
-                              "symbol": item['symbol'],
-                              "token": item['token'],
-                              "exchange": item['exchange'],
-                              "reason": reason,
-                              "status": "INIT"}
-
-    if any(dct):
-        print(dct)
+def get_positions_and_place_limit_order(params):
+    print(params['number'] * params['value'])
+    return get_orders_and_cancel_order
 
 
-handler = SpreadDB("../../../spread.db")
-items_data = handler.items_data
-close_positions(spread_id=2, items_data=items_data, users=[],
-                reason="TRAIL STOPPED")
+def get_orders_and_cancel_order(params):
+    print(params['number'] * params['value'])
+    return get_positions_and_place_limit_order
+
+
+def close(lst_of_ops):
+    print("inside close")
+    lst_of_ops = [dct.update(
+        {'func': get_positions_and_place_market_order}) for dct in lst_of_ops]
+
+    # Continue the loop until all 'func' values become None
+    while any(params['func'] for params in lst_of_ops):
+        for params in lst_of_ops:
+            current_function = params['func']
+            if current_function:
+                next_function = current_function(params)
+                params['func'] = next_function
+            else:
+                print(f"Unknown operation: {params['func']}")

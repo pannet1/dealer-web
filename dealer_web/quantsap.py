@@ -1,20 +1,20 @@
 import pandas as pd
 from toolkit.logger import Logger
-
+from test_dict_funcs import close
 logging = Logger(10)
 
 
-def db_changed(handler):
-    print("updating db")
-    handler.dump_memory("spread", handler.spread_data, ['status'])
+def db_changed(handler, lst_keys_to_rm=['status']):
+    logging.debug("updating db")
+    handler.dump_memory("spread", handler.spread_data, lst_keys_to_rm)
     handler.dump_memory("items", handler.items_data)
     handler.set_items(handler.fetch_data(handler.qry_items))
     handler.set_spread(handler.fetch_data(handler.qry_spread))
 
 
 def display_dfs(df_spread, df_items):
-    if df_spread.empty:
-        print("nothing to display")
+    if df_spread.empty or df_items.empty:
+        logging.info("nothing to display")
         return
 
     for _, row in df_spread.iterrows():
@@ -30,7 +30,7 @@ def display_dfs(df_spread, df_items):
 
 
 def monitor(handler,  updated_item):
-    print("monitoring")
+    logging.debug("monitoring")
 
     def calculate_mtm_perc(entry, mtm):
         if entry == 0 or mtm == 0:
@@ -85,23 +85,63 @@ def monitor(handler,  updated_item):
                 trail_mtm_at = calculate_mtm_perc(
                     unrealized, spread['max_mtm']
                 )
-                print(
-                    f"trailing .. max_mtm:{perc_max_mtm}% > trail_after:{spread['trail_after']}% | ",
-                    f"unrealized:{unrealized} mtm:{spread['mtm']} max_mtm:{spread['max_mtm']} | ",
+                logging.debug(
+                    f"trailing .. max_mtm:{perc_max_mtm}% > trail_after:{spread['trail_after']}% ")
+                logging.debug(
+                    f"unrealized:{unrealized} mtm:{spread['mtm']} max_mtm:{spread['max_mtm']}")
+                logging.debug(
                     f"trail_mtm:{trail_mtm_at}% < trail_at:{spread['trail_at']}% ?")
                 if trail_mtm_at < spread['trail_at']:
-                    logging.info("TRAIL STOPPED")
+                    logging.info(
+                        f"TRAIL STOPPED: trail_mtm{trail_mtm_at}% < trail_at{spread['trail_at']}%")
+                    attach_users_to_positions(spread_id, handler)
             elif perc_curr_mtm >= spread['tp']:
                 logging.info(
                     f"TARGET curr_mtm:{perc_curr_mtm}% > tp:{spread['tp']}%")
+                attach_users_to_positions(spread_id, handler)
             elif perc_curr_mtm <= (-1 * abs(spread['sl'])):
                 logging.info(
                     f"STOPPED  curr_mtm:{perc_curr_mtm}% < sl:{spread['sl']}%")
+                attach_users_to_positions(spread_id, handler)
             else:
-                logging.info(
+                logging.debug(
                     f"{perc_curr_mtm}% = {spread['capital']} / {spread['mtm']} * 100")
     handler.set_items(handler.items_data)
     handler.set_spread(handler.spread_data)
-    df_master = pd.DataFrame(handler.spread_data)
-    df_related = pd.DataFrame(handler.items_data)
-    display_dfs(df_master, df_related)
+    display_dfs(pd.DataFrame(handler.spread_data),
+                pd.DataFrame(handler.items_data))
+
+
+def attach_users_to_positions(spread_id, handler):
+    db_changed(handler, [])
+    # create a list of items for each spread
+    items_data = handler.items_data
+    big_list = []
+    for item in items_data:
+        if item["spread_id"] == spread_id:
+            dct = dict(
+                tradingsymbol=item['symbol'],
+                symboltoken=item['token'],
+                exchange=item['exchange'],
+                side=item['side'],
+            )
+            big_list.append(dct)
+
+    # create a list of users for each spread
+    lst_user_dct = handler.get_users(spread_id)
+    lst_user_dct = [dct['user'] for dct in lst_user_dct]
+
+    # merge list to dict and make a product
+    result_list = []
+    for user in lst_user_dct:
+        for item in big_list:
+            item_copy = item.copy()
+            item_copy['user'] = user
+            result_list.append(item_copy)
+
+    is_complete = close(result_list)
+    if is_complete:
+        logging.info("all positions squared off")
+        for spread in handler.spread_data:
+            if spread['id'] == spread_id:
+                spread['status'] = -1

@@ -12,3 +12,4 @@ orjson
 pandas
 smartapi-python
 websocket-client
+sqlite4
