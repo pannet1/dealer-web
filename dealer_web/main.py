@@ -622,13 +622,14 @@ async def users(request: Request):
                     completed_count += 1
         td.append(completed_count)
         pos = u.positions
-        lst_pos = pos.get('data', [])
-        sum = 0
-        if lst_pos:
-            for dct in lst_pos:
-                sum += int(float(dct.get('pnl', 0)))
-        td.append(sum)
-        body.append(td)
+        if pos:
+            lst_pos = pos.get('data', [])
+            sum = 0
+            if lst_pos:
+                for dct in lst_pos:
+                    sum += int(float(dct.get('pnl', 0)))
+            td.append(sum)
+            body.append(td)
     if len(body) > 0:
         ctx['th'] = th
         ctx['data'] = body

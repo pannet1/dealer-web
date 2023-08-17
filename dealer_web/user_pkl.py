@@ -167,7 +167,7 @@ def get_ltp(exch, sym, tkn):
     ao = random_broker()
     resp = ao.obj.ltpData(exch, sym, tkn)
     lst = resp_to_lst(resp)
-    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=ao.client_name)
+    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=a.client_name)
     return head, ltp
 
 
@@ -186,8 +186,7 @@ def get_symbols(search):
                     break
         f.close()
         args = ['exch_seg', 'symbol', 'token', 'lotsize']
-        ao = random_broker()
-        th, td = lst_to_tbl(j, args, client_name=ao.client_name)
+        th, td = lst_to_tbl(j, args, client_name=a.client_name)
         return th, td
 
 
@@ -246,9 +245,7 @@ def margins(args=None):
     th, td, mh, md = [], [], [], []
     for a in ao:
         resp = a.margins
-        if (
-            resp and resp.get('data') is not None
-        ):
+        if resp.get('data') is not None:
             resp['data']['userid'] = a._userid
         lst = resp_to_lst(resp)
         if not args:

@@ -121,7 +121,7 @@ class DatabaseHandler:
 
 if __name__ == "__main__":
     # Create an instance of the DatabaseHandler
-    handler = DatabaseHandler("../../../spread.db")
+    handler = DatabaseHandler("../../../../spread.db")
     # Before creating the triggers, set the recursive_triggers pragma to ON
     handler.drop_table("spread")
     handler.drop_table("items")
@@ -163,18 +163,7 @@ if __name__ == "__main__":
         "trail_after": 50,
         "trail_at": 40,
         "status": 1}
-    spread_data_2 = {
-        "name": "Second Spread 2",
-        "capital": 100,
-        "mtm": 0,
-        "tp": 10,
-        "sl": 5,
-        "max_mtm": 0,
-        "trail_after": 20,
-        "trail_at": 15,
-        "status": 1}
     handler.insert_data("spread", spread_data_1)
-    handler.insert_data("spread", spread_data_2)
     """
     items_data_1 = {
         "spread_id": 1,

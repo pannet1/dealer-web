@@ -112,5 +112,5 @@ class SpreadDB(DatabaseHandler):
 if __name__ == "__main__":
     exch_str_int = {'NSE': 1, 'NFO': 2, 'BSE': 3,
                     'MCX': 5, 'NCDEX': 7, 'CDS': 13}
-    handler = SpreadDB("../../../spread.db")
+    handler = SpreadDB("../../spread.db")
     val = handler.kv_for_subscribing(exch_str_int)
