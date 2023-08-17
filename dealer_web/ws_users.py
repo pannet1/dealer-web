@@ -10,24 +10,25 @@ sec_dir = "../../../"
 dumpfile = sec_dir + "symbols.json"
 
 
-def load_all_users():
-    def write_to_pickle(pkl, ao_obj):
-        print("writing to pickle file for user: " + ao_obj._user_id)
-        dct = {
-            "user_id": ao_obj._user_id,
-            "api_key": ao_obj._api_key,
-            "totp": ao_obj._totp,
-            "password": ao_obj._password,
-            "access_token": ao_obj.access_token,
-            "refresh_token": ao_obj.refresh_token,
-            "feed_token": ao_obj.feed_token,
-            "client_name": ao_obj.client_name
-        }
-        with open(pkl, "wb") as f:
-            pickle.dump(dct, f)
+def write_to_pickle(pkl, ao_obj):
+    print("writing to pickle file for user: " + ao_obj._user_id)
+    dct = {
+        "user_id": ao_obj._user_id,
+        "api_key": ao_obj._api_key,
+        "totp": ao_obj._totp,
+        "password": ao_obj._password,
+        "access_token": ao_obj.access_token,
+        "refresh_token": ao_obj.refresh_token,
+        "feed_token": ao_obj.feed_token,
+        "client_name": ao_obj.client_name
+    }
+    with open(pkl, "wb") as f:
+        pickle.dump(dct, f)
 
-    ao = []
+
+def get_login():
     users = futil.xls_to_dict(sec_dir + "ao_users.xls")
+    ao = []
     for user in users:
         pklfile = sec_dir + user['user_id'] + ".pkl"
         flag = futil.is_file_not_2day(pklfile)
@@ -35,15 +36,14 @@ def load_all_users():
             a = AngelOne(user['user_id'], user['api_key'],
                          user['totp'], user['password'])
         else:
-            print("loading from pickle file user: " + user['user_id'])
             with open(pklfile, "rb") as p:
+                print("loading from pickle file user: " + user['user_id'])
                 pkld = pickle.load(p)
             a = AngelOne(pkld['user_id'], pkld['api_key'], pkld['totp'],
                          pkld['password'], pkld['access_token'], pkld['refresh_token'],
                          pkld['feed_token'])
         if a.authenticate():
             if flag:
-                print(f"writing to pickle file {pklfile}")
                 write_to_pickle(pklfile, a)
             a._userid = user['user_id']
             a._multiplier = user['multiplier']
@@ -53,139 +53,16 @@ def load_all_users():
             ao.append(a)
         else:
             print(f"unable to authenticate user {user['user_id']}")
-
     return ao
 
 
-ao = load_all_users()
+ao = get_login()
 
 
 def random_broker() -> AngelOne:
     i = random.randint(0, len(ao) - 1)
     return ao[i]
 
-
-def orders(args=None):
-    th, td, mh, md = [], [], [], []
-    for a in ao:
-        resp = a.orders
-        lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def trades():
-    th, td, mh, md = [], [], [], []
-    for a in ao:
-        resp = a.trades
-        lst = resp_to_lst(resp)
-        args = ['tradingsymbol', 'optiontype',
-                'transactiontype', 'tradevalue', 'fillprice']
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def positions():
-    th, td, mh, md = [], [], [], []
-    for a in ao:
-        resp = a.positions
-        lst = resp_to_lst(resp)
-        args = [
-            'exchange', 'tradingsymbol', 'producttype', 'optiontype',
-            'netqty', 'pnl', 'ltp', 'avgnetprice', 'netprice'
-        ]
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def margins(args=None):
-    th, td, mh, md = [], [], [], []
-    for a in ao:
-        resp = a.margins
-        if resp.get('data') is not None:
-            resp['data']['userid'] = a._userid
-        lst = resp_to_lst(resp)
-        if not args:
-            args = ['userid', 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
-                    'utilisedpayout']
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def order_place_by_user(client_name, kwargs):
-    th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(client_name)
-    resp = a.order_place(**kwargs)
-    if resp:
-        lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
-        if 'message' in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def order_modify_by_user(client_name, kwargs):
-    th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(client_name)
-    resp = a.order_modify(kwargs)
-    print(kwargs)
-    print(resp)
-    lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
-    if 'message' in th1:
-        mh = th1
-        md += td1
-    else:
-        th = th1
-        td += td1
-    return mh, md, th, td
-
-
-def order_cancel(client_name, order_id, variety):
-    th, td, mh, md = [], [], [], []
-    a = get_broker_by_id(client_name)
-    resp = a.order_cancel(order_id, variety)
-    lst = resp_to_lst(resp)
-    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
-    if 'message' in th1:
-        mh = th1
-        md += td1
-    else:
-        th = th1
-        td += td1
-    return mh, md, th, td
-
-
-# equity trade functions
-#
 
 def get_broker_by_id(client_name: str) -> AngelOne:
     for a in ao:
@@ -268,11 +145,29 @@ def resp_to_lst(resp):
     }]
 
 
+def contracts():
+    if futil.is_file_not_2day(dumpfile):
+        headers = {
+            "Host": "angelbroking.com",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+        }
+        url = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
+        resp = get(url, headers=headers)
+        with open(dumpfile, "w") as json_file:
+            json_file.write(resp.text)
+        json_file, resp = None, None
+
+
 def get_ltp(exch, sym, tkn):
-    brkr = random_broker()
-    resp = brkr.obj.ltpData(exch, sym, tkn)
+    ao = random_broker()
+    resp = ao.obj.ltpData(exch, sym, tkn)
     lst = resp_to_lst(resp)
-    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=brkr.client_name)
+    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=ao.client_name)
     return head, ltp
 
 
@@ -291,8 +186,135 @@ def get_symbols(search):
                     break
         f.close()
         args = ['exch_seg', 'symbol', 'token', 'lotsize']
-        th, td = lst_to_tbl(j, args)
+        ao = random_broker()
+        th, td = lst_to_tbl(j, args, client_name=ao.client_name)
         return th, td
+
+
+def orders(args=None):
+    th, td, mh, md = [], [], [], []
+    for a in ao:
+        resp = a.orders
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def trades():
+    th, td, mh, md = [], [], [], []
+    for a in ao:
+        resp = a.trades
+        lst = resp_to_lst(resp)
+        args = ['tradingsymbol', 'optiontype',
+                'transactiontype', 'tradevalue', 'fillprice']
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def positions():
+    th, td, mh, md = [], [], [], []
+    for a in ao:
+        resp = a.positions
+        lst = resp_to_lst(resp)
+        args = [
+            'exchange', 'tradingsymbol', 'producttype', 'optiontype',
+            'netqty', 'pnl', 'ltp', 'avgnetprice', 'netprice'
+        ]
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def margins(args=None):
+    th, td, mh, md = [], [], [], []
+    for a in ao:
+        resp = a.margins
+        if (
+            resp and resp.get('data') is not None
+        ):
+            resp['data']['userid'] = a._userid
+        lst = resp_to_lst(resp)
+        if not args:
+            args = ['userid', 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
+                    'utilisedpayout']
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def order_place_by_user(client_name, kwargs):
+    th, td, mh, md = [], [], [], []
+    a = get_broker_by_id(client_name)
+    resp = a.order_place(**kwargs)
+    if resp:
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def order_modify_by_user(client_name, kwargs):
+    th, td, mh, md = [], [], [], []
+    a = get_broker_by_id(client_name)
+    resp = a.order_modify(kwargs)
+    print(kwargs)
+    print(resp)
+    lst = resp_to_lst(resp)
+    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
+    if 'message' in th1:
+        mh = th1
+        md += td1
+    else:
+        th = th1
+        td += td1
+    return mh, md, th, td
+
+
+def order_cancel(client_name, order_id, variety):
+    th, td, mh, md = [], [], [], []
+    a = get_broker_by_id(client_name)
+    resp = a.order_cancel(order_id, variety)
+    lst = resp_to_lst(resp)
+    th1, td1 = lst_to_tbl(lst, client_name=a.client_name)
+    if 'message' in th1:
+        mh = th1
+        md += td1
+    else:
+        th = th1
+        td += td1
+    return mh, md, th, td
+
+
+# equity trade functions
+def get_users():
+    return ao
 
 
 def get_token(row):
@@ -314,24 +336,6 @@ def get_token(row):
         return token
 
 
-def contracts():
-    if futil.is_file_not_2day(dumpfile):
-        headers = {
-            "Host": "angelbroking.com",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1"
-        }
-        url = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
-        resp = get(url, headers=headers)
-        with open(dumpfile, "w") as json_file:
-            json_file.write(resp.text)
-        json_file, resp = None, None
-
-
 def get_tkn_fm_sym(sym):
     try:
         f = open(dumpfile)
@@ -342,6 +346,22 @@ def get_tkn_fm_sym(sym):
         return token
     except Exception as e:
         print(f"{e} occured while get_tkn_fm_sym")
+
+
+def get_ws_symbols(sub_list):
+    try:
+        f = open(dumpfile)
+        main_list = json.load(f)
+        sub_list_with_tokens = [
+            {**sub_item, "token": next((item["token"] for item in main_list if item["symbol"]
+                                       == sub_item["symbol"] and item["exch_seg"] == sub_item["exch_seg"]), None)}
+            for sub_item in sub_list
+        ]
+        f.close
+    except Exception as e:
+        print(f"{e} occured while subscribe")
+    else:
+        return sub_list_with_tokens
 
 
 if __name__ == '__main__':

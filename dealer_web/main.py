@@ -21,6 +21,12 @@ pages = ['home', 'margins', 'orders', 'trades',
 POST methods
 """
 
+"""
+@app.on_event("startup")
+def startup():
+    app.state.user_manager = UserManager()
+"""
+
 
 @app.post("/orders/")
 async def post_orders(request: Request,
@@ -384,7 +390,7 @@ async def get_bulk_modify_order(
         "status": status,
         "producttype": producttype
     }
-    mh, md, th, td = user.orders()
+    mh, md, th, td = user.orders(args=None)
     if len(th) > 0:
         ords = []
         for tr in td:
@@ -567,7 +573,7 @@ async def margins(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
-    mh, md, th, td = user.margins()
+    mh, md, th, td = user.margins(args=None)
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
@@ -576,10 +582,12 @@ async def margins(request: Request):
 
 
 @ app.get("/trades", response_class=HTMLResponse)
-async def trades(request: Request):
+async def trades(request: Request,
+                 ):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
+
     mh, md, th, td = user.trades()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -588,23 +596,16 @@ async def trades(request: Request):
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/oldhome", response_class=HTMLResponse)
-async def home(request: Request):
-    user.contracts()
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    return jt.TemplateResponse("table.html", ctx)
-
-
 @ app.get("/home", response_class=HTMLResponse)
 @app.get("/", response_class=HTMLResponse)
-async def users(request: Request):
+async def users(request: Request,
+                ):
     user.contracts()
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     ctx['th'] = ['message']
     ctx['data'] = ["no data"]
     body = []
-    ao = user.get_users()
-    for row in ao:
+    for row in user.ao:
         th = ['user id', 'target', 'max loss', 'disabled', 'orders', 'pnl']
         td = [
             row._userid,
@@ -644,8 +645,8 @@ async def positionbook(request: Request,
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     ctx['th'] = ['message']
     ctx['data'] = [user_id]
-    ao = user.get_users()
-    for obj in ao:
+
+    for obj in user.ao:
         if obj._userid == user_id:
             u = obj
             break
@@ -727,8 +728,7 @@ async def orderbook(request: Request,
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     ctx['th'] = ['message']
     ctx['data'] = [user_id]
-    ao = user.get_users()
-    for obj in ao:
+    for obj in user.ao:
         if obj._userid == user_id:
             u = obj
             break
