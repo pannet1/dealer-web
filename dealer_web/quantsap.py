@@ -1,6 +1,6 @@
 import pandas as pd
 from toolkit.logger import Logger
-from test_dict_funcs import close
+from positions import close
 logging = Logger(10)
 
 
