@@ -1,0 +1,1 @@
+pip install "cython<3.0.0" && pip install --no-build-isolation pyyaml==6.0

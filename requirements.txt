@@ -1,6 +1,7 @@
 wheel
 uvicorn[standard]
 fastapi
+git+https://github.com/pannet1/omspy.git
 git+https://github.com/pannet1/omspy-brokers.git
 git+https://github.com/pannet1/toolkit.git
 smartapi-python
@@ -13,3 +14,5 @@ pandas
 smartapi-python
 websocket-client
 sqlite4
+pydantic==1.9
+pendulum

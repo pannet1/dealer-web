@@ -66,46 +66,46 @@ def monitor(handler,  updated_item):
         spread_capital[spread_id] = spread_capital.get(
             spread_id, 0) + capital
 
-        for spread in handler.spread_data:
-            spread_id = spread['id']
-            spread['mtm'] = spread_mtm.get(spread_id, 0)
-            spread['capital'] = spread_capital.get(spread_id, 0)
-            spread['max_mtm'] = max(spread['max_mtm'], spread['mtm'])
+    for spread in handler.spread_data:
+        spread_id = spread['id']
+        spread['mtm'] = spread_mtm.get(spread_id, 0)
+        spread['capital'] = spread_capital.get(spread_id, 0)
+        spread['max_mtm'] = max(spread['max_mtm'], spread['mtm'])
 
-            # Trailing stop
-            perc_max_mtm = calculate_mtm_perc(
-                spread['capital'], spread['max_mtm']
+        # Trailing stop
+        perc_max_mtm = calculate_mtm_perc(
+            spread['capital'], spread['max_mtm']
+        )
+        # mtm vs cost
+        perc_curr_mtm = calculate_mtm_perc(
+            spread['capital'], spread['mtm']
+        )
+        if perc_max_mtm >= spread['trail_after']:
+            unrealized = spread['mtm'] - spread['capital']
+            trail_mtm_at = calculate_mtm_perc(
+                unrealized, spread['max_mtm']
             )
-            # mtm vs cost
-            perc_curr_mtm = calculate_mtm_perc(
-                spread['capital'], spread['mtm']
-            )
-            if perc_max_mtm >= spread['trail_after']:
-                unrealized = spread['mtm'] - spread['capital']
-                trail_mtm_at = calculate_mtm_perc(
-                    unrealized, spread['max_mtm']
-                )
-                logging.debug(
-                    f"trailing .. max_mtm:{perc_max_mtm}% > trail_after:{spread['trail_after']}% ")
-                logging.debug(
-                    f"unrealized:{unrealized} mtm:{spread['mtm']} max_mtm:{spread['max_mtm']}")
-                logging.debug(
-                    f"trail_mtm:{trail_mtm_at}% < trail_at:{spread['trail_at']}% ?")
-                if trail_mtm_at < spread['trail_at']:
-                    logging.info(
-                        f"TRAIL STOPPED: trail_mtm{trail_mtm_at}% < trail_at{spread['trail_at']}%")
-                    attach_users_to_positions(spread_id, handler)
-            elif perc_curr_mtm >= spread['tp']:
+            logging.debug(
+                f"trailing .. max_mtm:{perc_max_mtm}% > trail_after:{spread['trail_after']}% ")
+            logging.debug(
+                f"unrealized:{unrealized} mtm:{spread['mtm']} max_mtm:{spread['max_mtm']}")
+            logging.debug(
+                f"trail_mtm:{trail_mtm_at}% < trail_at:{spread['trail_at']}% ?")
+            if trail_mtm_at < spread['trail_at']:
                 logging.info(
-                    f"TARGET curr_mtm:{perc_curr_mtm}% > tp:{spread['tp']}%")
+                    f"TRAIL STOPPED: trail_mtm{trail_mtm_at}% < trail_at{spread['trail_at']}%")
                 attach_users_to_positions(spread_id, handler)
-            elif perc_curr_mtm <= (-1 * abs(spread['sl'])):
-                logging.info(
-                    f"STOPPED  curr_mtm:{perc_curr_mtm}% < sl:{spread['sl']}%")
-                attach_users_to_positions(spread_id, handler)
-            else:
-                logging.debug(
-                    f"{perc_curr_mtm}% = {spread['capital']} / {spread['mtm']} * 100")
+        elif perc_curr_mtm >= spread['tp']:
+            logging.info(
+                f"TARGET curr_mtm:{perc_curr_mtm}% > tp:{spread['tp']}%")
+            attach_users_to_positions(spread_id, handler)
+        elif perc_curr_mtm <= (-1 * abs(spread['sl'])):
+            logging.info(
+                f"STOPPED  curr_mtm:{perc_curr_mtm}% < sl:{spread['sl']}%")
+            attach_users_to_positions(spread_id, handler)
+        else:
+            logging.debug(
+                f"{perc_curr_mtm}% = {spread['capital']} / {spread['mtm']} * 100")
     handler.set_items(handler.items_data)
     handler.set_spread(handler.spread_data)
     display_dfs(pd.DataFrame(handler.spread_data),
