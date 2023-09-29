@@ -133,7 +133,7 @@ async def post_bulk_modified_order(request: Request,
             'triggerprice': triggerprice,
             'duration': 'DAY'
         }
-        mh, md, th, td = user.order_place_by_user(client_name[i], params)
+        mh, md, th, td = user.order_modify_by_user(client_name[i], params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -416,7 +416,7 @@ async def get_bulk_modify_order(
                               ])
             ctx['th'], ctx['data'] = ['client_name', 'orderid',
                                       'prc/trgr', 'quantity'], fdata
-    remv, flt_ltp = user.get_ltp(
+    _, flt_ltp = user.get_ltp(
         subs['exchange'], subs['tradingsymbol'], subs['symboltoken'])
     subs['price'] = flt_ltp[0][0]
     subs['trigger'] = 0

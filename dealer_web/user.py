@@ -349,5 +349,3 @@ if __name__ == '__main__':
         {"symbol": 'PEL27JUL23920PE', "exch_seg": "NFO"},
         {"symbol": 'PEL27JUL23920CE', "exch_seg": "NFO"},
     ]
-    sub_list_with_tokens = get_ws_symbols(sub_list)
-    print(sub_list_with_tokens)
