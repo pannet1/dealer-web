@@ -92,7 +92,7 @@ async def post_orders(request: Request,
 @app.post("/bulk_modified_order/")
 async def post_bulk_modified_order(request: Request,
                                    client_name: List[str],
-                                   orderid: List[str],
+                                   order_id: List[str],
                                    quantity: List[str],
                                    txn_type: str = Form(),
                                    exchange: str = Form(),
@@ -121,6 +121,7 @@ async def post_bulk_modified_order(request: Request,
 
     for i in range(len(client_name)):
         params = {
+            'orderid': order_id[i],
             'variety': variety,
             'tradingsymbol': tradingsymbol,
             'symboltoken': symboltoken,
