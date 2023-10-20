@@ -270,9 +270,13 @@ def resp_to_lst(resp):
 
 def get_ltp(exch, sym, tkn):
     brkr = random_broker()
+    print(exch, sym, tkn)
     resp = brkr.obj.ltpData(exch, sym, tkn)
+    print(f"{resp:}")
     lst = resp_to_lst(resp)
+    print(f"{lst}")
     head, ltp = lst_to_tbl(lst, ['ltp'], client_name=brkr.client_name)
+    print(f"{ltp}")
     return head, ltp
 
 
@@ -331,7 +335,23 @@ def contracts():
             json_file.write(resp.text)
         json_file, resp = None, None
 
+def get_tkn_fm_sym(sym, exch):
+    """
+        consumed by close_position by users by fastapi
+    """
+    token = "0"
+    with open(dumpfile, "r") as objfile:
+        data = json.load(objfile)
+        for i in data:
+            if i['symbol'] == sym:
+                print("sym match")
+                print(i)
+                print(f"{sym=}{exch=}")
+            if (i['symbol']==sym) and (i['exch_seg'] == exch):
+                return i['token']
+    return token
 
+"""
 def get_tkn_fm_sym(sym):
     try:
         f = open(dumpfile)
@@ -342,7 +362,7 @@ def get_tkn_fm_sym(sym):
         return token
     except Exception as e:
         print(f"{e} occured while get_tkn_fm_sym")
-
+"""
 
 if __name__ == '__main__':
     sub_list = [

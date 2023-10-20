@@ -475,9 +475,10 @@ async def get_close_position_by_users(request: Request,
                 ])
             ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
     try:
-        token = user.get_tkn_fm_sym(subs['tradingsymbol'])
-        remv, flt_ltp = user.get_ltp(
+        token = user.get_tkn_fm_sym(subs['tradingsymbol'], subs['exchange'])
+        _, flt_ltp = user.get_ltp(
             subs['exchange'], subs['tradingsymbol'], token)
+        print(f"LTP: {flt_ltp}")
         subs['price'] = flt_ltp[0][0]
         subs['trigger'] = 0
         subs['transactiontype'] = transaction_type
