@@ -2,19 +2,20 @@
 
 This project is for semi-auto copying of trades on Angel Broking
 
-## install python 3.9 for windows from the below list. Adjust suitably for your windows operating system.
-Usually you need to install 64-bit version recommended [python 3.9.13](https://www.python.org/downloads/release/python-3913/)
+## Install python 3.9 for windows from the below list. 
+Adjust suitably for your windows operating system. Usually you need to install 64-bit version recommended [python 3.9.13](https://www.python.org/downloads/release/python-3913/)
 
-## install Git Bash. 
+## Install Git Bash. 
 This is [enhanced terminal plus git](), so that you can seamlessly update your system with the latest changes uploaded to github
 
-## create necessary directories start the bash terminal 
+## Start the bash terminal 
 create necessary directories and cd to `E:\py`
 
-## install the virtualenv which helps to have a self contained application with python. this way it will not mess with your operating system.
+## install the virtualenv
+Virtualenv helps to have a self contained application with python. This way it will not mess with your operating system.
 `python -m venv venv`
 
-## cd to the newly created `virtualenv`,  `E:\py`
+## cd to the newly created virtualenv from  `E:\py`
 `cd venv`
 
 ## Activate the environment, from within the venv directory
@@ -33,6 +34,10 @@ cd dealer-web/dealer_web
 Provide the list of users in the credential file `py/ao_users.xls` file.
 
 ## Run the application
-```
-python main.py
+`python main.py`
+
+## Shortcuts
+you can link the bat files found inside dealer-web directory and use it to run the `main.py` or `update.bat` to get the latest version of the dealer-web from github without messing in the terminal.
+
+Happy trading !
 ```
