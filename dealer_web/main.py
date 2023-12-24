@@ -21,12 +21,6 @@ pages = ['home', 'margins', 'orders', 'trades',
 POST methods
 """
 
-"""
-@app.on_event("startup")
-def startup():
-    app.state.user_manager = UserManager()
-"""
-
 
 @app.post("/orders/")
 async def post_orders(request: Request,
@@ -119,28 +113,37 @@ async def post_bulk_modified_order(request: Request,
         ordertype = 'STOPLOSS_MARKET'
         variety = 'STOPLOSS'
 
-    for i in range(len(client_name)):
-        params = {
-            'orderid': order_id[i],
-            'variety': variety,
-            'tradingsymbol': tradingsymbol,
-            'symboltoken': symboltoken,
-            "transactiontype": txn_type,
-            'exchange': exchange,
-            'ordertype': ordertype,
-            "producttype": producttype,
-            'price': price,
-            'quantity': quantity[i],
-            'triggerprice': triggerprice,
-            'duration': 'DAY'
-        }
-        mh, md, th, td = user.order_modify_by_user(client_name[i], params)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
+    try:
+        for i in range(len(client_name)):
+            params = {
+                'orderid': order_id[i],
+                'variety': variety,
+                'tradingsymbol': tradingsymbol,
+                'symboltoken': symboltoken,
+                "transactiontype": txn_type,
+                'exchange': exchange,
+                'ordertype': ordertype,
+                "producttype": producttype,
+                'price': price,
+                'quantity': quantity[i],
+                'triggerprice': triggerprice,
+                'duration': 'DAY'
+            }
+            _, _, _, _ = user.order_modify_by_user(client_name[i], params)
+        """
+            to be removed
+        ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+        if len(mh) > 0:
+            ctx['mh'], ctx['md'] = mh, md
+        if (len(th) > 0):
+            ctx['th'], ctx['data'] = th, td
+        return jt.TemplateResponse("table.html", ctx)
+        """
+    except Exception as e:
+        return JSONResponse(content={"E bulk order modifying": str(e)}, status_code=400)
+    else:
+        redirect_url = request.url_for('orders')
+        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/order_modify/")
@@ -159,44 +162,52 @@ async def order_modify(request: Request,
     """
     modify single order
     """
-    if otype == 1:
-        ordertype = 'LIMIT'
-        variety = 'NORMAL'
-    elif otype == 2:
-        ordertype = 'MARKET'
-        variety = 'NORMAL'
-    elif otype == 3:
-        ordertype = 'STOPLOSS_LIMIT'
-        variety = 'STOPLOSS'
-    elif otype == 4:
-        ordertype = 'STOPLOSS_MARKET'
-        variety = 'STOPLOSS'
-    if ptype == 1:
-        producttype = 'CARRYFORWARD'
-    elif ptype == 2:
-        producttype = 'INTRADAY'
-    elif ptype == 3:
-        producttype = 'DELIVERY'
-    params = {
-        "orderid": order_id,
-        "variety": variety,
-        "tradingsymbol": symbol,
-        "symboltoken": token,
-        "exchange": exchange,
-        "ordertype": ordertype,
-        "producttype": producttype,
-        "duration": "DAY",
-        "price": str(price),
-        "triggerprice": str(trigger),
-        "quantity": str(qty),
-    }
-    mh, md, th, td = user.order_modify_by_user(client_name, params)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
+    try:
+        if otype == 1:
+            ordertype = 'LIMIT'
+            variety = 'NORMAL'
+        elif otype == 2:
+            ordertype = 'MARKET'
+            variety = 'NORMAL'
+        elif otype == 3:
+            ordertype = 'STOPLOSS_LIMIT'
+            variety = 'STOPLOSS'
+        elif otype == 4:
+            ordertype = 'STOPLOSS_MARKET'
+            variety = 'STOPLOSS'
+        if ptype == 1:
+            producttype = 'CARRYFORWARD'
+        elif ptype == 2:
+            producttype = 'INTRADAY'
+        elif ptype == 3:
+            producttype = 'DELIVERY'
+        params = {
+            "orderid": order_id,
+            "variety": variety,
+            "tradingsymbol": symbol,
+            "symboltoken": token,
+            "exchange": exchange,
+            "ordertype": ordertype,
+            "producttype": producttype,
+            "duration": "DAY",
+            "price": str(price),
+            "triggerprice": str(trigger),
+            "quantity": str(qty),
+        }
+        mh, md, th, td = user.order_modify_by_user(client_name, params)
+        """
+        ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+        if len(mh) > 0:
+            ctx['mh'], ctx['md'] = mh, md
+        if (len(th) > 0):
+            ctx['th'], ctx['data'] = th, td
+        return jt.TemplateResponse("table.html", ctx)
+        """
+    except Exception as e:
+        return JSONResponse(content={"E order modifying": str(e)}, status_code=400)
+    else:
+        redirect_url = request.url_for('orders')
+        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/post_basket/")
@@ -214,38 +225,47 @@ async def posted_basket(request: Request,
     """
     places basket orders
     """
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    mh, md, th, td = [], [], [], []
-    for i in range(len(price)):
-        if otype[i] == 'LIMIT':
-            variety = 'NORMAL'
-        elif otype[i] == 'MARKET':
-            variety = 'NORMAL'
-        elif otype[i] == 'STOPLOSS_LIMIT':
-            variety = 'STOPLOSS'
-        elif otype[i] == 'STOPLOSS_MARKET':
-            variety = 'STOPLOSS'
-        params = {
-            "variety": variety,
-            "tradingsymbol": tradingsymbol[i],
-            "symboltoken": token[i],
-            "transactiontype": transactiontype[i],
-            "exchange": exchange[i],
-            "ordertype": otype[i],
-            "producttype": ptype[i],
-            "duration": "DAY",
-            "price": price[i],
-            "triggerprice": trigger[i],
-            "quantity": quantity[i],
-        }
-        mh, md, th, td = user.order_place_by_user(client_name[i], params)
-        if len(mh) > 0:
-            ctx['mh'] = mh
-            ctx['md'].extend(md)
-        if (len(th) > 0):
-            ctx['th'] = th
-            ctx.setdefault('data', []).extend(td)
+    try:
+        ctx = {"request": request, "title": inspect.stack()[
+            0][3], 'pages': pages}
+        mh, md, th, td = [], [], [], []
+        for i in range(len(price)):
+            if otype[i] == 'LIMIT':
+                variety = 'NORMAL'
+            elif otype[i] == 'MARKET':
+                variety = 'NORMAL'
+            elif otype[i] == 'STOPLOSS_LIMIT':
+                variety = 'STOPLOSS'
+            elif otype[i] == 'STOPLOSS_MARKET':
+                variety = 'STOPLOSS'
+            params = {
+                "variety": variety,
+                "tradingsymbol": tradingsymbol[i],
+                "symboltoken": token[i],
+                "transactiontype": transactiontype[i],
+                "exchange": exchange[i],
+                "ordertype": otype[i],
+                "producttype": ptype[i],
+                "duration": "DAY",
+                "price": price[i],
+                "triggerprice": trigger[i],
+                "quantity": quantity[i],
+            }
+            mh, md, th, td = user.order_place_by_user(client_name[i], params)
+            """
+            if len(mh) > 0:
+                ctx['mh'] = mh
+                ctx['md'].extend(md)
+            if (len(th) > 0):
+                ctx['th'] = th
+                ctx.setdefault('data', []).extend(td)
     return jt.TemplateResponse("table.html", ctx)
+            """
+    except Exception as e:
+        return JSONResponse(content={"E place basket": str(e)}, status_code=400)
+    else:
+        redirect_url = request.url_for('orders')
+        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/toggle_status")
