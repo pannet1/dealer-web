@@ -335,6 +335,7 @@ def contracts():
             json_file.write(resp.text)
         json_file, resp = None, None
 
+
 def get_tkn_fm_sym(sym, exch):
     """
         consumed by close_position by users by fastapi
@@ -347,9 +348,10 @@ def get_tkn_fm_sym(sym, exch):
                 print("sym match")
                 print(i)
                 print(f"{sym=}{exch=}")
-            if (i['symbol']==sym) and (i['exch_seg'] == exch):
+            if (i['symbol'] == sym) and (i['exch_seg'] == exch):
                 return i['token']
     return token
+
 
 """
 def get_tkn_fm_sym(sym):

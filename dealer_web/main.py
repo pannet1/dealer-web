@@ -1,3 +1,4 @@
+# from fastapi_cprofile.profiler import CProfileMiddleware
 import traceback
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -13,6 +14,10 @@ from sqlite.spreaddb import SpreadDB
 
 handler = SpreadDB("../../../spread.db")
 app = FastAPI()
+"""
+app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
+                   filename='output.pstats', strip_dirs=False, sort_by='cumulative')
+"""
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
 pages = ['home', 'margins', 'orders', 'trades',
@@ -33,6 +38,7 @@ async def post_orders(request: Request,
                       ptype: int = Form('0'),
                       otype: int = Form('0'),
                       price: float = Form(),
+                      lotsize: int = Form('1'),
                       trigger: float = Form()):
     """
     places orders for all clients

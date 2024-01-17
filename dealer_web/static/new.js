@@ -1,29 +1,31 @@
 // consumes sync_frm_clr from main.js
 document.addEventListener('DOMContentLoaded', () => {
   const txn = document.getElementById('txn')
+  txn.checked = true
   txn.onclick = function() {
     if (txn.checked == true) {
-      sync_frm_clr('BUY') } else {
+      sync_frm_clr('BUY')
+    } else {
       sync_frm_clr('SELL')
     }
   }
   if (txn.checked == true)
-  sync_frm_clr('BUY')
-}); 
+    sync_frm_clr('BUY')
+});
 
 const copyButton = document.getElementById('copyButton');
 copyButton.addEventListener('click', () => {
   const sourceTable = document.querySelector('.mx-auto.table.table-compact');
   const targetTable = document.getElementById('basket_table');
   const rowsToCopy = Array.from(sourceTable.querySelectorAll('tr')).filter((row) => {
-  const qtyInput = row.querySelector('input[name="qty"]');
+    const qtyInput = row.querySelector('input[name="qty"]');
     return qtyInput && Number(qtyInput.value) > 0;
   });
 
   rowsToCopy.forEach((row, index) => {
     const newRow = document.createElement('div');
     newRow.classList.add('stat', 'place-items-center');
-  
+
     const txnCheckbox = document.getElementById('txn');
     const txnValue = txnCheckbox.checked ? 'BUY' : 'SELL';
     const txnInputField = document.createElement('input');
@@ -70,7 +72,7 @@ copyButton.addEventListener('click', () => {
         const ptypeInput = document.createElement('input');
         ptypeInput.name = 'ptype';
         ptypeInput.value = ptype;
-        ptypeInput.type ='hidden';
+        ptypeInput.type = 'hidden';
         newRow.appendChild(ptypeInput);
       }
     });
@@ -126,7 +128,7 @@ copyButton.addEventListener('click', () => {
     tknInputField.value = tknInput.value;
     newRow.appendChild(tknInputField);
 
-    /* css styling and beautification */ 
+    /* css styling and beautification */
 
     const statTitleDiv = document.createElement('div');
     statTitleDiv.textContent = priceInput.value + " / " + triggerInput.value
@@ -135,10 +137,10 @@ copyButton.addEventListener('click', () => {
     statValueDiv.className = 'stat-value';
 
     const statDescDiv = document.createElement('div');
-    statDescDiv.textContent = clientNameInput.value + " / " + otype + " / " + ptype 
+    statDescDiv.textContent = clientNameInput.value + " / " + otype + " / " + ptype
 
     if (txnInputField.value == 'SELL') {
-      statTitleDiv.className = 'stat-title text-red-500';      
+      statTitleDiv.className = 'stat-title text-red-500';
       newRow.appendChild(statTitleDiv)
 
       statValueDiv.textContent = "-" + qtyInput.value + " " + symbolInputField.value;
@@ -150,14 +152,14 @@ copyButton.addEventListener('click', () => {
       statTitleDiv.className = 'stat-title text-green-500';
       newRow.appendChild(statTitleDiv)
 
-      statValueDiv.textContent =  qtyInput.value + " " + symbolInputField.value;
+      statValueDiv.textContent = qtyInput.value + " " + symbolInputField.value;
       newRow.appendChild(statValueDiv);
 
       statDescDiv.className = 'stat-desc text-green-500';
       newRow.appendChild(statDescDiv)
 
     }
-    /* end of css beautification */ 
+    /* end of css beautification */
 
     targetTable.appendChild(newRow);
   });
