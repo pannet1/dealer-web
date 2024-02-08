@@ -4,14 +4,13 @@ fastapi
 git+https://github.com/pannet1/omspy.git
 git+https://github.com/pannet1/omspy-brokers.git
 git+https://github.com/pannet1/toolkit.git
-smartapi-python
+smartapi-python==1.4.1
 python-multipart
 xlrd
 pyotp
 jinja2
 orjson
 pandas
-smartapi-python
 websocket-client
 sqlite4
 pydantic==1.10.13
