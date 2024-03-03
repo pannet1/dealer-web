@@ -1,18 +1,20 @@
 # from fastapi_cprofile.profiler import CProfileMiddleware
-import traceback
+from api_helper import contracts, get_symbols, get_tkn_fm_sym
+from api_helper import resp_to_lst, lst_to_tbl
+from user_helper import order_place_by_user, order_modify_by_user, \
+    order_cancel_by_user
+from user import load_all_users
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from typing import List, Optional
 import starlette.status as status
 import inspect
-import user
-from typing import List, Optional
 import uvicorn
-from sqlite.spreaddb import SpreadDB
+import asyncio
+import random
 
-
-handler = SpreadDB("../../../spread.db")
 app = FastAPI()
 """
 app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
@@ -21,7 +23,144 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
 pages = ['home', 'margins', 'orders', 'trades',
-         'positions', 'new', 'basket', 'spreads']
+         'positions', 'new']
+
+L_USERS = load_all_users()
+
+
+def get_broker_by_id(client_name: str):
+    for a in L_USERS:
+        if a.client_name == client_name:
+            return a
+
+
+def random_broker():
+    i = random.randint(0, len(L_USERS) - 1)
+    return L_USERS[i]
+
+
+def orders(args=None):
+    th, td, mh, md = [], [], [], []
+    for a in L_USERS:
+        resp = a.orders
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def trades():
+    th, td, mh, md = [], [], [], []
+    for a in L_USERS:
+        resp = a.trades
+        lst = resp_to_lst(resp)
+        args = ['tradingsymbol', 'optiontype',
+                'transactiontype', 'tradevalue', 'fillprice']
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def positions():
+    th, td, mh, md = [], [], [], []
+    for a in L_USERS:
+        resp = a.positions
+        lst = resp_to_lst(resp)
+        args = [
+            'exchange', 'tradingsymbol', 'producttype', 'optiontype',
+            'netqty', 'pnl', 'ltp', 'avgnetprice', 'netprice'
+        ]
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def margins(args=None):
+    th, td, mh, md = [], [], [], []
+    for a in L_USERS:
+        resp = a.margins
+        if resp.get('data') is not None:
+            resp['data']['userid'] = a._userid
+        lst = resp_to_lst(resp)
+        if not args:
+            args = ['userid', 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
+                    'utilisedpayout']
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if 'message' in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
+
+
+def get_ltp(exch, sym, tkn):
+    brkr = random_broker()
+    print(exch, sym, tkn)
+    resp = brkr.obj.ltpData(exch, sym, tkn)
+    print(f"{resp:}")
+    lst = resp_to_lst(resp)
+    print(f"{lst}")
+    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=brkr.client_name)
+    print(f"{ltp}")
+    return head, ltp
+
+
+@app.get("/home", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
+async def users(request: Request,
+                ):
+    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx['th'] = ['message']
+    ctx['data'] = ["no data"]
+    body = []
+    for row in L_USERS:
+        th = ['user id', 'target', 'max loss', 'disabled', 'orders', 'pnl']
+        td = [
+            row._userid,
+            row._target,
+            row._max_loss,
+            row._disabled,
+        ]
+        u = row
+        dict_orders = u.orders
+        orders = dict_orders.get('data', [])
+        completed_count = 0
+        if isinstance(orders, list):
+            for item in orders:
+                if isinstance(item, dict) and item.get('orderstatus') == 'complete':
+                    completed_count += 1
+        td.append(completed_count)
+        pos = u.positions
+        if pos:
+            lst_pos = pos.get('data', [])
+            sum = 0
+            if lst_pos:
+                for dct in lst_pos:
+                    sum += int(float(dct.get('pnl', 0)))
+            td.append(sum)
+            body.append(td)
+    if len(body) > 0:
+        ctx['th'] = th
+        ctx['data'] = body
+    return jt.TemplateResponse("users.html", ctx)
+
 """
 POST methods
 """
@@ -45,6 +184,7 @@ async def post_orders(request: Request,
     """
     mh, md, th, td = [], [], [], []
     for i in range(len(client_name)):
+        obj_client = get_broker_by_id(client_name[i])
         if qty[i] > 0:
             txn_type = 'BUY' if txn == 'on' else 'SELL'
             if otype == 1:
@@ -80,7 +220,7 @@ async def post_orders(request: Request,
                 "triggerprice": str(trigger),
                 "quantity": str(qty[i])
             }
-            mh, md, th, td = user.order_place_by_user(client_name[i], params)
+            mh, md, th, td = order_place_by_user(obj_client, params)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -121,6 +261,7 @@ async def post_bulk_modified_order(request: Request,
 
     try:
         for i in range(len(client_name)):
+            obj_client = get_broker_by_id(client_name[i])
             params = {
                 'orderid': order_id[i],
                 'variety': variety,
@@ -135,7 +276,7 @@ async def post_bulk_modified_order(request: Request,
                 'triggerprice': triggerprice,
                 'duration': 'DAY'
             }
-            _, _, _, _ = user.order_modify_by_user(client_name[i], params)
+            _, _, _, _ = order_modify_by_user(obj_client, params)
         """
             to be removed
         ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
@@ -169,6 +310,7 @@ async def order_modify(request: Request,
     modify single order
     """
     try:
+        obj_client = get_broker_by_id(client_name)
         if otype == 1:
             ordertype = 'LIMIT'
             variety = 'NORMAL'
@@ -200,7 +342,7 @@ async def order_modify(request: Request,
             "triggerprice": str(trigger),
             "quantity": str(qty),
         }
-        mh, md, th, td = user.order_modify_by_user(client_name, params)
+        mh, md, th, td = order_modify_by_user(obj_client, params)
         """
         ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
         if len(mh) > 0:
@@ -236,6 +378,7 @@ async def posted_basket(request: Request,
             0][3], 'pages': pages}
         mh, md, th, td = [], [], [], []
         for i in range(len(price)):
+            obj_client = get_broker_by_id(client_name[i])
             if otype[i] == 'LIMIT':
                 variety = 'NORMAL'
             elif otype[i] == 'MARKET':
@@ -257,7 +400,7 @@ async def posted_basket(request: Request,
                 "triggerprice": trigger[i],
                 "quantity": quantity[i],
             }
-            mh, md, th, td = user.order_place_by_user(client_name[i], params)
+            mh, md, th, td = order_place_by_user(obj_client, params)
             """
             if len(mh) > 0:
                 ctx['mh'] = mh
@@ -274,107 +417,18 @@ async def posted_basket(request: Request,
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
-@app.post("/toggle_status")
-async def toggle_status(id: int, status: int):
-    handler.update_data("spread", id, {"status": status})
-    return {"status": status}
-
-
-@app.post("/spread_item")
-async def spread_item(request: Request):
-    form_data = await request.form()
-
-    # Validate the form data
-    required_fields = ["spread_id", "token", "exchange",
-                       "symbol", "ltp", "entry", "qty"]
-    if not all(field in form_data for field in required_fields):
-        return JSONResponse(content={"error": "Missing or invalid fields in the form data"}, status_code=400)
-    try:
-        side = -1 if form_data.get("txn_type", "off") == "off" else 1
-        spread_id = int(form_data.get("spread_id"))
-        token = form_data.get("token")
-        exchange = form_data.get("exchange")
-        ltp = float(form_data.get("ltp"))
-        symbol = form_data.get("symbol")
-        entry = float(form_data.get("entry"))
-        quantity = int(form_data.get("qty"))
-    except (ValueError, TypeError) as e:
-        print(e)
-        traceback.print_exc()
-        return JSONResponse(content={"error": str(e)}, status_code=400)
-
-    items_data = {
-        "spread_id": spread_id,
-        "token": token,
-        "side": side,
-        "exchange": exchange,
-        "symbol": symbol,
-        "ltp": ltp,
-        "entry": entry,
-        "quantity": quantity,
-        "mtm": 0
-    }
-    try:
-        print(f"new item: {items_data}")
-        handler.insert_data("items", items_data)
-    except Exception as db:
-        return JSONResponse(content={"error": str(db)}, status_code=400)
-    else:
-        redirect_url = request.url_for('spreads')
-        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
-
-
-@app.post("/spread_user")
-async def post_spread_user(request: Request,
-                           spread_id: int = Form(...),
-                           users: List = Form(...)):
-
-    if not isinstance(users, list) or len(users) == 0:
-        return JSONResponse(content={"error": "you should have atleast one user"}, status_code=400)
-    for user_id in users:
-        try:
-            spread_user = {"spread_id": spread_id, "broker_id": user_id}
-            handler.insert_data("spread_user", spread_user)
-        except Exception as db:
-            return JSONResponse(content={"error": str(db)}, status_code=400)
-    redirect_url = request.url_for('spreads')
-    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
-
-
-@app.post("/spread")
-async def post_spread(request: Request):
-    form_data = await request.form()
-    spread_data = {
-        "name": form_data.get("name"),
-        "tp": int(form_data.get("tp")),
-        "sl": int(form_data.get("sl")),
-        "trail_after": int(form_data.get("trail_after")),
-        "trail_at": int(form_data.get("trail_at")),
-        "status": 0,
-        "capital": 0,
-        "mtm": 0,
-        "max_mtm": 0,
-    }
-    try:
-        handler.insert_data("spread", spread_data)
-    except Exception as db:
-        return JSONResponse(content={"error": str(db)}, status_code=400)
-    else:
-        redirect_url = request.url_for('spreads')
-        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
-
-
 """
 GET methods
 """
 
 
 @app.get("/order_cancel/")
-async def order_cancel(request: Request,
-                       client_name: str,
-                       order_id: str,
-                       variety: str):
-    mh, md, th, td = user.order_cancel(client_name, order_id, variety)
+async def get_order_cancel(request: Request,
+                           client_name: str,
+                           order_id: str,
+                           variety: str):
+    obj_client = get_broker_by_id(client_name)
+    mh, md, th, td = order_cancel_by_user(obj_client, order_id, variety)
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
@@ -385,13 +439,13 @@ async def order_cancel(request: Request,
 
 @app.get("/ltp/")
 async def ltp(symbol: str, exchange: str, token: str):
-    th, data = user.get_ltp(exchange, symbol, token)
+    _, data = get_ltp(exchange, symbol, token)
     return data
 
 
 @app.get("/mw/{search}")
 async def mw(search):
-    th, data = user.get_symbols(search)
+    _, data = get_symbols(search)
     return data
 
 
@@ -417,7 +471,7 @@ async def get_bulk_modify_order(
         "status": status,
         "producttype": producttype
     }
-    mh, md, th, td = user.orders(args=None)
+    mh, md, th, td = orders(args=None)
     if len(th) > 0:
         ords = []
         for tr in td:
@@ -443,7 +497,7 @@ async def get_bulk_modify_order(
                               ])
             ctx['th'], ctx['data'] = ['client_name', 'orderid',
                                       'prc/trgr', 'quantity'], fdata
-    _, flt_ltp = user.get_ltp(
+    _, flt_ltp = get_ltp(
         subs['exchange'], subs['tradingsymbol'], subs['symboltoken'])
     subs['price'] = flt_ltp[0][0]
     subs['trigger'] = 0
@@ -464,7 +518,7 @@ async def get_close_position_by_users(request: Request,
         "producttype": producttype
     }
     transaction_type = "SELL" if netqty > 0 else "BUY"
-    mh, md, th, td = user.positions()
+    mh, md, th, td = positions()
     if len(th) > 0:
         posn = []
         for tr in td:
@@ -501,8 +555,8 @@ async def get_close_position_by_users(request: Request,
                 ])
             ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
     try:
-        token = user.get_tkn_fm_sym(subs['tradingsymbol'], subs['exchange'])
-        _, flt_ltp = user.get_ltp(
+        token = get_tkn_fm_sym(subs['tradingsymbol'], subs['exchange'])
+        _, flt_ltp = get_ltp(
             subs['exchange'], subs['tradingsymbol'], token)
         print(f"LTP: {flt_ltp}")
         subs['price'] = flt_ltp[0][0]
@@ -517,7 +571,7 @@ async def get_close_position_by_users(request: Request,
 
 
 @ app.get("/orders", response_class=HTMLResponse)
-async def orders(request: Request):
+async def get_orders(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
@@ -534,7 +588,7 @@ async def orders(request: Request):
             'text',
             'exchange',
             'symboltoken']
-    mh, md, th, td = user.orders(args)
+    mh, md, th, td = orders(args)
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
@@ -549,11 +603,11 @@ async def orders(request: Request):
 
 
 @ app.get("/positions", response_class=HTMLResponse)
-async def positions(request: Request):
+async def get_positions(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
-    mh, md, th, td = user.positions()
+    mh, md, th, td = positions()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
@@ -574,7 +628,7 @@ async def new(request: Request):
            'pages': pages}
     args = ['client_name',
             'net']
-    mh, md, th, td = user.margins(args)
+    mh, md, th, td = margins(args)
     if any(mh):
         ctx['mh'], ctx['md'] = mh, md
     if any(th):
@@ -588,7 +642,7 @@ async def basket(request: Request):
            "title": inspect.stack()[0][3],
            'pages': pages}
     args = ['client_name', 'net']
-    mh, md, th, td = user.margins(args)
+    mh, md, th, td = margins(args)
     if any(mh):
         ctx['mh'], ctx['md'] = mh, md
     if any(th):
@@ -597,11 +651,11 @@ async def basket(request: Request):
 
 
 @ app.get("/margins", response_class=HTMLResponse)
-async def margins(request: Request):
+async def get_margins(request: Request):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
-    mh, md, th, td = user.margins(args=None)
+    mh, md, th, td = margins(args=None)
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
@@ -610,59 +664,18 @@ async def margins(request: Request):
 
 
 @ app.get("/trades", response_class=HTMLResponse)
-async def trades(request: Request,
-                 ):
+async def get_trades(request: Request,
+                     ):
     ctx = {"request": request,
            "title": inspect.stack()[0][3],
            'pages': pages}
 
-    mh, md, th, td = user.trades()
+    mh, md, th, td = trades()
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
     if (len(th) > 0):
         ctx['th'], ctx['data'] = th, td
     return jt.TemplateResponse("table.html", ctx)
-
-
-@app.get("/home", response_class=HTMLResponse)
-@app.get("/", response_class=HTMLResponse)
-async def users(request: Request,
-                ):
-    user.contracts()
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    ctx['th'] = ['message']
-    ctx['data'] = ["no data"]
-    body = []
-    for row in user.ao:
-        th = ['user id', 'target', 'max loss', 'disabled', 'orders', 'pnl']
-        td = [
-            row._userid,
-            row._target,
-            row._max_loss,
-            row._disabled,
-        ]
-        u = row
-        dict_orders = u.orders
-        orders = dict_orders.get('data', [])
-        completed_count = 0
-        if isinstance(orders, list):
-            for item in orders:
-                if isinstance(item, dict) and item.get('orderstatus') == 'complete':
-                    completed_count += 1
-        td.append(completed_count)
-        pos = u.positions
-        if pos:
-            lst_pos = pos.get('data', [])
-            sum = 0
-            if lst_pos:
-                for dct in lst_pos:
-                    sum += int(float(dct.get('pnl', 0)))
-            td.append(sum)
-            body.append(td)
-    if len(body) > 0:
-        ctx['th'] = th
-        ctx['data'] = body
-    return jt.TemplateResponse("users.html", ctx)
 
 
 @app.get("/positionbook/")
@@ -674,7 +687,7 @@ async def positionbook(request: Request,
     ctx['th'] = ['message']
     ctx['data'] = [user_id]
 
-    for obj in user.ao:
+    for obj in L_USERS:
         if obj._userid == user_id:
             u = obj
             break
@@ -756,7 +769,7 @@ async def orderbook(request: Request,
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     ctx['th'] = ['message']
     ctx['data'] = [user_id]
-    for obj in user.ao:
+    for obj in L_USERS:
         if obj._userid == user_id:
             u = obj
             break
@@ -814,57 +827,11 @@ async def orderbook(request: Request,
     return jt.TemplateResponse("table.html", ctx)
 
 
-@app.get("/spreads", response_class=HTMLResponse)
-async def spreads(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    query = """
-        SELECT spread.*
-        FROM spread
-        WHERE status >= 0
-        ORDER BY id DESC
-    """
-    spreads = handler.fetch_data(query)
-
-    user_query = """
-        SELECT user.*
-        FROM user
-        """
-    users = handler.fetch_data(user_query)
-
-    # Fetch related items data for each spread and add it to the context
-    for spread in spreads:
-        items_query = f"""
-            SELECT items.*
-            FROM items
-            WHERE spread_id = {spread['id']}
-        """
-        items = handler.fetch_data(items_query)
-        spread['items'] = items
-
-    # Fetch related users data foro each spread and add it to the context
-    for spread in spreads:
-        user_query = f"""
-            SELECT u.user
-            FROM user u
-            INNER JOIN spread_user su ON u.broker_id = su.broker_id
-            WHERE su.spread_id = {spread['id']}
-        """
-        rslt = handler.fetch_data(user_query)
-        spread['users'] = rslt
-
-    ctx['users'] = users
-    ctx['spreads'] = spreads
-    return jt.TemplateResponse("spreads.html", ctx)
-
-
-@ app.get("/spread", response_class=HTMLResponse)
-async def get_spread(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    return jt.TemplateResponse("new_spread.html", ctx)
+@app.on_event("startup")
+async def startup_event():
+    if __import__("sys").platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    contracts()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
