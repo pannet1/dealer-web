@@ -224,9 +224,13 @@ async def post_orders(request: Request,
     ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
     if len(mh) > 0:
         ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
-    return jt.TemplateResponse("table.html", ctx)
+        if (len(th) > 0):
+            ctx['th'], ctx['data'] = th, td
+        return jt.TemplateResponse("table.html", ctx)
+    else:
+        return RedirectResponse(
+            '/orders',
+            status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/bulk_modified_order/")
@@ -400,7 +404,7 @@ async def posted_basket(request: Request,
                 "triggerprice": trigger[i],
                 "quantity": quantity[i],
             }
-            mh, md, th, td = order_place_by_user(obj_client, params)
+            order_place_by_user(obj_client, params)
             """
             if len(mh) > 0:
                 ctx['mh'] = mh
