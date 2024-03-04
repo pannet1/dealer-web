@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const copyButton = document.getElementById('copyButton');
 copyButton.addEventListener('click', () => {
+  // unhide the button class 
+  const btn_basket = document.getElementById('btn_basket');
   const sourceTable = document.querySelector('.mx-auto.table.table-compact');
   const targetTable = document.getElementById('basket_table');
   const rowsToCopy = Array.from(sourceTable.querySelectorAll('tr')).filter((row) => {
@@ -163,4 +165,6 @@ copyButton.addEventListener('click', () => {
 
     targetTable.appendChild(newRow);
   });
+
+  btn_basket.classList.remove('hidden');
 });

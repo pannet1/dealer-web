@@ -6,13 +6,13 @@
   <div class="grid flex-grow h-32 card place-items-center max-w-lg">
     <form id="frm" autocomplete="off" class="p-2 bg-red-300">
     <div class="btn-group">
-      <input type="radio" name="ptype" value="1" data-title="NRML" class="btn btn-sm" checked />
-      <input type="radio" name="ptype" value="2" data-title="MIS" class="btn btn-sm"  />
+      <input type="radio" name="ptype" value="1" data-title="NRML" class="btn btn-sm"  />
+      <input type="radio" name="ptype" value="2" data-title="MIS" class="btn btn-sm"  checked/>
       <input type="radio" name="ptype" value="3" data-title="CNC" class="btn btn-sm" />
     </div>
     <div class="btn-group lg:float-right">
-      <input type="radio" name="otype" value="1" data-title="LMT" class="btn btn-sm" checked />
-      <input type="radio" name="otype" value="2" data-title="MKT" class="btn btn-sm"  />
+      <input type="radio" name="otype" value="1" data-title="LMT" class="btn btn-sm"  />
+      <input type="radio" name="otype" value="2" data-title="MKT" class="btn btn-sm"  checked/>
       <input type="radio" name="otype" value="3" data-title="SL" class="btn btn-sm" />
       <input type="radio" name="otype" value="4" data-title="SL-M" class="btn btn-sm" />
     </div>
@@ -106,7 +106,7 @@
       <form action="/post_basket/" method="POST">
         <div id="basket_table" class="stats stats-vertical shadow">
         </div>
-        <div>
+        <div id="btn_basket" class="hidden">
           <input type="submit"
           class="btn btn-primary btn-block btn-outline"
           value="basket"/>

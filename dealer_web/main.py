@@ -23,7 +23,7 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
 pages = ['home', 'margins', 'orders', 'trades',
-         'positions', 'new']
+         'positions', 'new', 'basket']
 
 L_USERS = load_all_users()
 
@@ -293,7 +293,7 @@ async def post_bulk_modified_order(request: Request,
     except Exception as e:
         return JSONResponse(content={"E bulk order modifying": str(e)}, status_code=400)
     else:
-        redirect_url = request.url_for('orders')
+        redirect_url = request.url_for('get_orders')
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
@@ -358,7 +358,7 @@ async def order_modify(request: Request,
     except Exception as e:
         return JSONResponse(content={"E order modifying": str(e)}, status_code=400)
     else:
-        redirect_url = request.url_for('orders')
+        redirect_url = request.url_for('get_orders')
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
@@ -377,48 +377,47 @@ async def posted_basket(request: Request,
     """
     places basket orders
     """
-    try:
-        ctx = {"request": request, "title": inspect.stack()[
-            0][3], 'pages': pages}
-        mh, md, th, td = [], [], [], []
-        for i in range(len(price)):
-            obj_client = get_broker_by_id(client_name[i])
-            if otype[i] == 'LIMIT':
-                variety = 'NORMAL'
-            elif otype[i] == 'MARKET':
-                variety = 'NORMAL'
-            elif otype[i] == 'STOPLOSS_LIMIT':
-                variety = 'STOPLOSS'
-            elif otype[i] == 'STOPLOSS_MARKET':
-                variety = 'STOPLOSS'
-            params = {
-                "variety": variety,
-                "tradingsymbol": tradingsymbol[i],
-                "symboltoken": token[i],
-                "transactiontype": transactiontype[i],
-                "exchange": exchange[i],
-                "ordertype": otype[i],
-                "producttype": ptype[i],
-                "duration": "DAY",
-                "price": price[i],
-                "triggerprice": trigger[i],
-                "quantity": quantity[i],
-            }
-            order_place_by_user(obj_client, params)
-            """
-            if len(mh) > 0:
-                ctx['mh'] = mh
-                ctx['md'].extend(md)
-            if (len(th) > 0):
-                ctx['th'] = th
-                ctx.setdefault('data', []).extend(td)
-    return jt.TemplateResponse("table.html", ctx)
-            """
-    except Exception as e:
-        return JSONResponse(content={"E place basket": str(e)}, status_code=400)
-    else:
-        redirect_url = request.url_for('orders')
-        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
+    ctx = {"request": request, "title": inspect.stack()[
+        0][3], 'pages': pages}
+    mh, md, th, td = [], [], [], []
+    for i in range(len(price)):
+        obj_client = get_broker_by_id(client_name[i])
+        if otype[i] == 'LIMIT':
+            variety = 'NORMAL'
+        elif otype[i] == 'MARKET':
+            variety = 'NORMAL'
+        elif otype[i] == 'STOPLOSS_LIMIT':
+            variety = 'STOPLOSS'
+        elif otype[i] == 'STOPLOSS_MARKET':
+            variety = 'STOPLOSS'
+        params = {
+            "variety": variety,
+            "tradingsymbol": tradingsymbol[i],
+            "symboltoken": token[i],
+            "transactiontype": transactiontype[i],
+            "exchange": exchange[i],
+            "ordertype": otype[i],
+            "producttype": ptype[i],
+            "duration": "DAY",
+            "price": price[i],
+            "triggerprice": trigger[i],
+            "quantity": quantity[i],
+        }
+        order_place_by_user(obj_client, params)
+        """
+        if len(mh) > 0:
+            ctx['mh'] = mh
+            ctx['md'].extend(md)
+        if (len(th) > 0):
+            ctx['th'] = th
+            ctx.setdefault('data', []).extend(td)
+return jt.TemplateResponse("table.html", ctx)
+except Exception as e:
+    return JSONResponse(content={"E place basket": str(e)}, status_code=400)
+else:
+"""
+    redirect_url = request.url_for('get_orders')
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 """
