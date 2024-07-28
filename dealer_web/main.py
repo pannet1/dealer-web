@@ -1,8 +1,7 @@
 # from fastapi_cprofile.profiler import CProfileMiddleware
 from api_helper import contracts, get_symbols, get_tkn_fm_sym
 from api_helper import resp_to_lst, lst_to_tbl
-from user_helper import order_place_by_user, order_modify_by_user, \
-    order_cancel_by_user
+from user_helper import order_place_by_user, order_modify_by_user, order_cancel_by_user
 from user import load_all_users
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -22,8 +21,7 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
 """
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
-pages = ['home', 'margins', 'orders', 'trades',
-         'positions', 'new', 'basket']
+pages = ["home", "margins", "orders", "trades", "positions", "new", "basket"]
 
 L_USERS = load_all_users()
 
@@ -45,7 +43,7 @@ def orders(args=None):
         resp = a.orders
         lst = resp_to_lst(resp)
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
+        if "message" in th1:
             mh = th1
             md += td1
         else:
@@ -59,10 +57,15 @@ def trades():
     for a in L_USERS:
         resp = a.trades
         lst = resp_to_lst(resp)
-        args = ['tradingsymbol', 'optiontype',
-                'transactiontype', 'tradevalue', 'fillprice']
+        args = [
+            "tradingsymbol",
+            "optiontype",
+            "transactiontype",
+            "tradevalue",
+            "fillprice",
+        ]
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
+        if "message" in th1:
             mh = th1
             md += td1
         else:
@@ -77,11 +80,18 @@ def positions():
         resp = a.positions
         lst = resp_to_lst(resp)
         args = [
-            'exchange', 'tradingsymbol', 'producttype', 'optiontype',
-            'netqty', 'pnl', 'ltp', 'avgnetprice', 'netprice'
+            "exchange",
+            "tradingsymbol",
+            "producttype",
+            "optiontype",
+            "netqty",
+            "pnl",
+            "ltp",
+            "avgnetprice",
+            "netprice",
         ]
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
+        if "message" in th1:
             mh = th1
             md += td1
         else:
@@ -94,14 +104,20 @@ def margins(args=None):
     th, td, mh, md = [], [], [], []
     for a in L_USERS:
         resp = a.margins
-        if resp.get('data') is not None:
-            resp['data']['userid'] = a._userid
+        if resp.get("data") is not None:
+            resp["data"]["userid"] = a._userid
         lst = resp_to_lst(resp)
         if not args:
-            args = ['userid', 'net', 'availablecash', 'm2munrealized', 'utiliseddebits',
-                    'utilisedpayout']
+            args = [
+                "userid",
+                "net",
+                "availablecash",
+                "m2munrealized",
+                "utiliseddebits",
+                "utilisedpayout",
+            ]
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if 'message' in th1:
+        if "message" in th1:
             mh = th1
             md += td1
         else:
@@ -117,21 +133,22 @@ def get_ltp(exch, sym, tkn):
     print(f"{resp:}")
     lst = resp_to_lst(resp)
     print(f"{lst}")
-    head, ltp = lst_to_tbl(lst, ['ltp'], client_name=brkr.client_name)
+    head, ltp = lst_to_tbl(lst, ["ltp"], client_name=brkr.client_name)
     print(f"{ltp}")
     return head, ltp
 
 
 @app.get("/home", response_class=HTMLResponse)
 @app.get("/", response_class=HTMLResponse)
-async def users(request: Request,
-                ):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    ctx['th'] = ['message']
-    ctx['data'] = ["no data"]
+async def users(
+    request: Request,
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    ctx["th"] = ["message"]
+    ctx["data"] = ["no data"]
     body = []
     for row in L_USERS:
-        th = ['user id', 'target', 'max loss', 'disabled', 'orders', 'pnl']
+        th = ["user id", "target", "max loss", "disabled", "orders", "pnl"]
         td = [
             row._userid,
             row._target,
@@ -140,26 +157,27 @@ async def users(request: Request,
         ]
         u = row
         dict_orders = u.orders
-        orders = dict_orders.get('data', [])
+        orders = dict_orders.get("data", [])
         completed_count = 0
         if isinstance(orders, list):
             for item in orders:
-                if isinstance(item, dict) and item.get('orderstatus') == 'complete':
+                if isinstance(item, dict) and item.get("orderstatus") == "complete":
                     completed_count += 1
         td.append(completed_count)
         pos = u.positions
         if pos:
-            lst_pos = pos.get('data', [])
+            lst_pos = pos.get("data", [])
             sum = 0
             if lst_pos:
                 for dct in lst_pos:
-                    sum += int(float(dct.get('pnl', 0)))
+                    sum += int(float(dct.get("pnl", 0)))
             td.append(sum)
             body.append(td)
     if len(body) > 0:
-        ctx['th'] = th
-        ctx['data'] = body
+        ctx["th"] = th
+        ctx["data"] = body
     return jt.TemplateResponse("users.html", ctx)
+
 
 """
 POST methods
@@ -167,18 +185,20 @@ POST methods
 
 
 @app.post("/orders/")
-async def post_orders(request: Request,
-                      qty: List[int],
-                      client_name: List[str],
-                      symbol: str = Form(),
-                      token: str = Form(),
-                      txn: Optional[str] = Form('off'),
-                      exchange: str = Form(),
-                      ptype: int = Form('0'),
-                      otype: int = Form('0'),
-                      price: float = Form(),
-                      lotsize: int = Form('1'),
-                      trigger: float = Form()):
+async def post_orders(
+    request: Request,
+    qty: List[int],
+    client_name: List[str],
+    symbol: str = Form(),
+    token: str = Form(),
+    txn: Optional[str] = Form("off"),
+    exchange: str = Form(),
+    ptype: int = Form("0"),
+    otype: int = Form("0"),
+    price: float = Form(),
+    lotsize: int = Form("1"),
+    trigger: float = Form(),
+):
     """
     places orders for all clients
     """
@@ -186,27 +206,27 @@ async def post_orders(request: Request,
     for i in range(len(client_name)):
         obj_client = get_broker_by_id(client_name[i])
         if qty[i] > 0:
-            txn_type = 'BUY' if txn == 'on' else 'SELL'
+            txn_type = "BUY" if txn == "on" else "SELL"
             if otype == 1:
-                ordertype = 'LIMIT'
-                variety = 'NORMAL'
+                ordertype = "LIMIT"
+                variety = "NORMAL"
             elif otype == 2:
-                ordertype = 'MARKET'
-                variety = 'NORMAL'
+                ordertype = "MARKET"
+                variety = "NORMAL"
                 price = 0
             elif otype == 3:
-                ordertype = 'STOPLOSS_LIMIT'
-                variety = 'STOPLOSS'
+                ordertype = "STOPLOSS_LIMIT"
+                variety = "STOPLOSS"
             elif otype == 4:
-                ordertype = 'STOPLOSS_MARKET'
-                variety = 'STOPLOSS'
+                ordertype = "STOPLOSS_MARKET"
+                variety = "STOPLOSS"
 
             if ptype == 1:
-                producttype = 'CARRYFORWARD'
+                producttype = "CARRYFORWARD"
             elif ptype == 2:
-                producttype = 'INTRADAY'
+                producttype = "INTRADAY"
             elif ptype == 3:
-                producttype = 'DELIVERY'
+                producttype = "DELIVERY"
             params = {
                 "variety": variety,
                 "tradingsymbol": symbol,
@@ -218,67 +238,67 @@ async def post_orders(request: Request,
                 "duration": "DAY",
                 "price": str(price),
                 "triggerprice": str(trigger),
-                "quantity": str(qty[i])
+                "quantity": str(qty[i]),
             }
             mh, md, th, td = order_place_by_user(obj_client, params)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-        if (len(th) > 0):
-            ctx['th'], ctx['data'] = th, td
+        ctx["mh"], ctx["md"] = mh, md
+        if len(th) > 0:
+            ctx["th"], ctx["data"] = th, td
         return jt.TemplateResponse("table.html", ctx)
     else:
-        return RedirectResponse(
-            '/orders',
-            status_code=status.HTTP_302_FOUND)
+        return RedirectResponse("/orders", status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/bulk_modified_order/")
-async def post_bulk_modified_order(request: Request,
-                                   client_name: List[str],
-                                   order_id: List[str],
-                                   quantity: List[str],
-                                   txn_type: str = Form(),
-                                   exchange: str = Form(),
-                                   symboltoken: str = Form(),
-                                   tradingsymbol: str = Form(),
-                                   otype: int = Form('0'),
-                                   producttype: str = Form(),
-                                   triggerprice: str = Form(),
-                                   price: str = Form()):
+async def post_bulk_modified_order(
+    request: Request,
+    client_name: List[str],
+    order_id: List[str],
+    quantity: List[str],
+    txn_type: str = Form(),
+    exchange: str = Form(),
+    symboltoken: str = Form(),
+    tradingsymbol: str = Form(),
+    otype: int = Form("0"),
+    producttype: str = Form(),
+    triggerprice: str = Form(),
+    price: str = Form(),
+):
     """
     post modified orders in bulk
     """
     mh, md, th, td = [], [], [], []
     if otype == 1:
-        ordertype = 'LIMIT'
-        variety = 'NORMAL'
+        ordertype = "LIMIT"
+        variety = "NORMAL"
     elif otype == 2:
-        ordertype = 'MARKET'
-        variety = 'NORMAL'
+        ordertype = "MARKET"
+        variety = "NORMAL"
     elif otype == 3:
-        ordertype = 'STOPLOSS_LIMIT'
-        variety = 'STOPLOSS'
+        ordertype = "STOPLOSS_LIMIT"
+        variety = "STOPLOSS"
     elif otype == 4:
-        ordertype = 'STOPLOSS_MARKET'
-        variety = 'STOPLOSS'
+        ordertype = "STOPLOSS_MARKET"
+        variety = "STOPLOSS"
 
     try:
         for i in range(len(client_name)):
             obj_client = get_broker_by_id(client_name[i])
             params = {
-                'orderid': order_id[i],
-                'variety': variety,
-                'tradingsymbol': tradingsymbol,
-                'symboltoken': symboltoken,
+                "orderid": order_id[i],
+                "variety": variety,
+                "tradingsymbol": tradingsymbol,
+                "symboltoken": symboltoken,
                 "transactiontype": txn_type,
-                'exchange': exchange,
-                'ordertype': ordertype,
+                "exchange": exchange,
+                "ordertype": ordertype,
                 "producttype": producttype,
-                'price': price,
-                'quantity': quantity[i],
-                'triggerprice': triggerprice,
-                'duration': 'DAY'
+                "price": price,
+                "quantity": quantity[i],
+                "triggerprice": triggerprice,
+                "duration": "DAY",
             }
             _, _, _, _ = order_modify_by_user(obj_client, params)
         """
@@ -293,46 +313,48 @@ async def post_bulk_modified_order(request: Request,
     except Exception as e:
         return JSONResponse(content={"E bulk order modifying": str(e)}, status_code=400)
     else:
-        redirect_url = request.url_for('get_orders')
+        redirect_url = request.url_for("get_orders")
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/order_modify/")
-async def order_modify(request: Request,
-                       order_id: str = Form(),
-                       qty: int = Form(),
-                       client_name: str = Form(),
-                       symbol: str = Form(),
-                       token: str = Form(),
-                       txn: Optional[str] = Form('off'),
-                       exchange: str = Form(),
-                       ptype: int = Form('0'),
-                       otype: int = Form('0'),
-                       price: float = Form(),
-                       trigger: float = Form()):
+async def order_modify(
+    request: Request,
+    order_id: str = Form(),
+    qty: int = Form(),
+    client_name: str = Form(),
+    symbol: str = Form(),
+    token: str = Form(),
+    txn: Optional[str] = Form("off"),
+    exchange: str = Form(),
+    ptype: int = Form("0"),
+    otype: int = Form("0"),
+    price: float = Form(),
+    trigger: float = Form(),
+):
     """
     modify single order
     """
     try:
         obj_client = get_broker_by_id(client_name)
         if otype == 1:
-            ordertype = 'LIMIT'
-            variety = 'NORMAL'
+            ordertype = "LIMIT"
+            variety = "NORMAL"
         elif otype == 2:
-            ordertype = 'MARKET'
-            variety = 'NORMAL'
+            ordertype = "MARKET"
+            variety = "NORMAL"
         elif otype == 3:
-            ordertype = 'STOPLOSS_LIMIT'
-            variety = 'STOPLOSS'
+            ordertype = "STOPLOSS_LIMIT"
+            variety = "STOPLOSS"
         elif otype == 4:
-            ordertype = 'STOPLOSS_MARKET'
-            variety = 'STOPLOSS'
+            ordertype = "STOPLOSS_MARKET"
+            variety = "STOPLOSS"
         if ptype == 1:
-            producttype = 'CARRYFORWARD'
+            producttype = "CARRYFORWARD"
         elif ptype == 2:
-            producttype = 'INTRADAY'
+            producttype = "INTRADAY"
         elif ptype == 3:
-            producttype = 'DELIVERY'
+            producttype = "DELIVERY"
         params = {
             "orderid": order_id,
             "variety": variety,
@@ -358,38 +380,39 @@ async def order_modify(request: Request,
     except Exception as e:
         return JSONResponse(content={"E order modifying": str(e)}, status_code=400)
     else:
-        redirect_url = request.url_for('get_orders')
+        redirect_url = request.url_for("get_orders")
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/post_basket/")
-async def posted_basket(request: Request,
-                        price: List[str] = Form(),
-                        trigger: List[str] = Form(),
-                        quantity: List[str] = Form(),
-                        client_name: List[str] = Form(),
-                        transactiontype: List[str] = Form(),
-                        exchange: List[str] = Form(),
-                        tradingsymbol: List[str] = Form(),
-                        token: List[str] = Form(),
-                        ptype: List[str] = Form(),
-                        otype: List[str] = Form()):
+async def posted_basket(
+    request: Request,
+    price: List[str] = Form(),
+    trigger: List[str] = Form(),
+    quantity: List[str] = Form(),
+    client_name: List[str] = Form(),
+    transactiontype: List[str] = Form(),
+    exchange: List[str] = Form(),
+    tradingsymbol: List[str] = Form(),
+    token: List[str] = Form(),
+    ptype: List[str] = Form(),
+    otype: List[str] = Form(),
+):
     """
     places basket orders
     """
-    ctx = {"request": request, "title": inspect.stack()[
-        0][3], 'pages': pages}
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     mh, md, th, td = [], [], [], []
     for i in range(len(price)):
         obj_client = get_broker_by_id(client_name[i])
-        if otype[i] == 'LIMIT':
-            variety = 'NORMAL'
-        elif otype[i] == 'MARKET':
-            variety = 'NORMAL'
-        elif otype[i] == 'STOPLOSS_LIMIT':
-            variety = 'STOPLOSS'
-        elif otype[i] == 'STOPLOSS_MARKET':
-            variety = 'STOPLOSS'
+        if otype[i] == "LIMIT":
+            variety = "NORMAL"
+        elif otype[i] == "MARKET":
+            variety = "NORMAL"
+        elif otype[i] == "STOPLOSS_LIMIT":
+            variety = "STOPLOSS"
+        elif otype[i] == "STOPLOSS_MARKET":
+            variety = "STOPLOSS"
         params = {
             "variety": variety,
             "tradingsymbol": tradingsymbol[i],
@@ -411,12 +434,12 @@ async def posted_basket(request: Request,
         if (len(th) > 0):
             ctx['th'] = th
             ctx.setdefault('data', []).extend(td)
-return jt.TemplateResponse("table.html", ctx)
-except Exception as e:
-    return JSONResponse(content={"E place basket": str(e)}, status_code=400)
-else:
-"""
-    redirect_url = request.url_for('get_orders')
+        return jt.TemplateResponse("table.html", ctx)
+        except Exception as e:
+            return JSONResponse(content={"E place basket": str(e)}, status_code=400)
+        else:
+        """
+    redirect_url = request.url_for("get_orders")
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
@@ -426,17 +449,16 @@ GET methods
 
 
 @app.get("/order_cancel/")
-async def get_order_cancel(request: Request,
-                           client_name: str,
-                           order_id: str,
-                           variety: str):
+async def get_order_cancel(
+    request: Request, client_name: str, order_id: str, variety: str
+):
     obj_client = get_broker_by_id(client_name)
     mh, md, th, td = order_cancel_by_user(obj_client, order_id, variety)
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
 
@@ -454,17 +476,16 @@ async def mw(search):
 
 @app.get("/bulk_modify_order/", response_class=HTMLResponse)
 async def get_bulk_modify_order(
-        request: Request,
-        exchange: str,
-        tradingsymbol: str,
-        symboltoken: str,
-        transactiontype: str,
-        producttype: str,
-        status: str,
-        ordertype: str):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
+    request: Request,
+    exchange: str,
+    tradingsymbol: str,
+    symboltoken: str,
+    transactiontype: str,
+    producttype: str,
+    status: str,
+    ordertype: str,
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     subs = {
         "exchange": exchange,
         "tradingsymbol": tradingsymbol,
@@ -472,7 +493,7 @@ async def get_bulk_modify_order(
         "transactiontype": transactiontype,
         "ordertype": ordertype,
         "status": status,
-        "producttype": producttype
+        "producttype": producttype,
     }
     mh, md, th, td = orders(args=None)
     if len(th) > 0:
@@ -492,33 +513,38 @@ async def get_bulk_modify_order(
             fdata = []
             for f in fltr:
                 print(f)
-                fdata.append([f.get('client_name'),
-                              f.get('orderid'),
-                              str(f.get('price')) + "/" +
-                              str(f.get('triggerprice')),
-                              f.get('quantity')
-                              ])
-            ctx['th'], ctx['data'] = ['client_name', 'orderid',
-                                      'prc/trgr', 'quantity'], fdata
-    _, flt_ltp = get_ltp(
-        subs['exchange'], subs['tradingsymbol'], subs['symboltoken'])
-    subs['price'] = flt_ltp[0][0]
-    subs['trigger'] = 0
-    ctx['subs'] = [subs]
+                fdata.append(
+                    [
+                        f.get("client_name"),
+                        f.get("orderid"),
+                        str(f.get("price")) + "/" + str(f.get("triggerprice")),
+                        f.get("quantity"),
+                    ]
+                )
+            ctx["th"], ctx["data"] = (
+                ["client_name", "orderid", "prc/trgr", "quantity"],
+                fdata,
+            )
+    _, flt_ltp = get_ltp(subs["exchange"], subs["tradingsymbol"], subs["symboltoken"])
+    subs["price"] = flt_ltp[0][0]
+    subs["trigger"] = 0
+    ctx["subs"] = [subs]
     return jt.TemplateResponse("orders_modify.html", ctx)
 
 
 @app.get("/close_position_by_users/", response_class=HTMLResponse)
-async def get_close_position_by_users(request: Request,
-                                      exchange: str,
-                                      tradingsymbol: str,
-                                      netqty: int,
-                                      producttype: str,):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
+async def get_close_position_by_users(
+    request: Request,
+    exchange: str,
+    tradingsymbol: str,
+    netqty: int,
+    producttype: str,
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     subs = {
         "exchange": exchange,
         "tradingsymbol": tradingsymbol,
-        "producttype": producttype
+        "producttype": producttype,
     }
     transaction_type = "SELL" if netqty > 0 else "BUY"
     mh, md, th, td = positions()
@@ -531,7 +557,7 @@ async def get_close_position_by_users(request: Request,
         for pos in posn:
             success = True
             for k, v in subs.items():
-                if k == 'netqty':
+                if k == "netqty":
                     if v > 0 and pos.get(k) < 0:
                         success = False
                         break
@@ -552,143 +578,130 @@ async def get_close_position_by_users(request: Request,
             print(fltr)
             fdata = []
             for f in fltr:
-                fdata.append([
-                    f.get('client_name'),
-                    abs(int(f.get('netqty')))
-                ])
-            ctx['th'], ctx['data'] = ['client_name', 'quantity'], fdata
+                fdata.append([f.get("client_name"), abs(int(f.get("netqty")))])
+            ctx["th"], ctx["data"] = ["client_name", "quantity"], fdata
     try:
-        token = get_tkn_fm_sym(subs['tradingsymbol'], subs['exchange'])
-        _, flt_ltp = get_ltp(
-            subs['exchange'], subs['tradingsymbol'], token)
+        token = get_tkn_fm_sym(subs["tradingsymbol"], subs["exchange"])
+        _, flt_ltp = get_ltp(subs["exchange"], subs["tradingsymbol"], token)
         print(f"LTP: {flt_ltp}")
-        subs['price'] = flt_ltp[0][0]
-        subs['trigger'] = 0
-        subs['transactiontype'] = transaction_type
-        subs['symboltoken'] = token
-        ctx['subs'] = [subs]
+        subs["price"] = flt_ltp[0][0]
+        subs["trigger"] = 0
+        subs["transactiontype"] = transaction_type
+        subs["symboltoken"] = token
+        ctx["subs"] = [subs]
     except Exception as e:
         print(f"{e} in get_pos_modify")
     else:
         return jt.TemplateResponse("positions_modify.html", ctx)
 
 
-@ app.get("/orders", response_class=HTMLResponse)
+@app.get("/orders", response_class=HTMLResponse)
 async def get_orders(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    args = ['cancel_modify',
-            'producttype',
-            'ordertype',
-            'price',
-            'triggerprice',
-            'quantity',
-            'tradingsymbol',
-            'transactiontype',
-            'orderid',
-            'status',
-            'text',
-            'exchange',
-            'symboltoken']
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    args = [
+        "cancel_modify",
+        "producttype",
+        "ordertype",
+        "price",
+        "triggerprice",
+        "quantity",
+        "tradingsymbol",
+        "transactiontype",
+        "orderid",
+        "status",
+        "text",
+        "exchange",
+        "symboltoken",
+    ]
     mh, md, th, td = orders(args)
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
         for ord in td:
             dct = dict(zip(th, ord))
-            url = '/bulk_modify_order/?'
+            url = "/bulk_modify_order/?"
             for k, v in dct.items():
-                url += f'{k}={v}&'
+                url += f"{k}={v}&"
             ord.insert(0, url)
-        ctx['th'], ctx['data'] = th, td
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("orders.html", ctx)
 
 
-@ app.get("/positions", response_class=HTMLResponse)
+@app.get("/positions", response_class=HTMLResponse)
 async def get_positions(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     mh, md, th, td = positions()
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
         for ord in td:
             dct = dict(zip(th, ord))
-            url = '/close_position_by_users/?'
+            url = "/close_position_by_users/?"
             for k, v in dct.items():
-                url += f'{k}={v}&'
+                url += f"{k}={v}&"
             ord.insert(0, url)
-        ctx['th'], ctx['data'] = th, td
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("positions.html", ctx)
 
 
-@ app.get("/new", response_class=HTMLResponse)
+@app.get("/new", response_class=HTMLResponse)
 async def new(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    args = ['client_name',
-            'net']
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    args = ["client_name", "net"]
     mh, md, th, td = margins(args)
     if any(mh):
-        ctx['mh'], ctx['md'] = mh, md
+        ctx["mh"], ctx["md"] = mh, md
     if any(th):
-        ctx['th'], ctx['data'] = th, td
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("new.html", ctx)
 
 
 @app.get("/basket", response_class=HTMLResponse)
 async def basket(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
-    args = ['client_name', 'net']
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    args = ["client_name", "net"]
     mh, md, th, td = margins(args)
     if any(mh):
-        ctx['mh'], ctx['md'] = mh, md
+        ctx["mh"], ctx["md"] = mh, md
     if any(th):
-        ctx['th'], ctx['data'] = th, td
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("basket.html", ctx)
 
 
-@ app.get("/margins", response_class=HTMLResponse)
+@app.get("/margins", response_class=HTMLResponse)
 async def get_margins(request: Request):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     mh, md, th, td = margins(args=None)
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
 
-@ app.get("/trades", response_class=HTMLResponse)
-async def get_trades(request: Request,
-                     ):
-    ctx = {"request": request,
-           "title": inspect.stack()[0][3],
-           'pages': pages}
+@app.get("/trades", response_class=HTMLResponse)
+async def get_trades(
+    request: Request,
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
 
     mh, md, th, td = trades()
     if len(mh) > 0:
-        ctx['mh'], ctx['md'] = mh, md
-    if (len(th) > 0):
-        ctx['th'], ctx['data'] = th, td
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
+        ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("table.html", ctx)
 
 
 @app.get("/positionbook/")
-async def positionbook(request: Request,
-                       user_id: str = 'no data',
-                       txn_type: str = '',
-                       ):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    ctx['th'] = ['message']
-    ctx['data'] = [user_id]
+async def positionbook(
+    request: Request,
+    user_id: str = "no data",
+    txn_type: str = "",
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    ctx["th"] = ["message"]
+    ctx["data"] = [user_id]
 
     for obj in L_USERS:
         if obj._userid == user_id:
@@ -697,7 +710,7 @@ async def positionbook(request: Request,
     if u:
         body = []
         pos = u.positions
-        lst_pos = pos.get('data', [])
+        lst_pos = pos.get("data", [])
         pop_keys = [
             "instrumenttype",
             "symbolname",
@@ -730,36 +743,36 @@ async def positionbook(request: Request,
             "sellqty",
             "buyamount",
             "sellamount",
-            "close"
+            "close",
         ]
         if lst_pos:
             for f_dct in lst_pos:
                 [f_dct.pop(key) for key in pop_keys]
-                quantity = f_dct.pop('netqty', 0)
-                lotsize = f_dct.pop('lotsize', 0)
+                quantity = f_dct.pop("netqty", 0)
+                lotsize = f_dct.pop("lotsize", 0)
                 try:
                     lots = int(quantity) / int(lotsize)
                 except Exception as e:
                     print({e})
-                    f_dct['netqty'] = quantity
+                    f_dct["netqty"] = quantity
                 else:
-                    f_dct['netqty'] = int(lots)
+                    f_dct["netqty"] = int(lots)
                 k = f_dct.keys()
                 th = list(k)
                 v = f_dct.values()
                 td = list(v)
                 body.append(td)
             if len(body) > 0:
-                ctx['th'] = th
-                ctx['data'] = body
+                ctx["th"] = th
+                ctx["data"] = body
 
     if txn_type != "":
         list_of_dicts = [dict(zip(th, row)) for row in body]
         filtered_rows = [
             {key: value for key, value in row.items()}
             for row in list_of_dicts
-            if (txn_type == 'Buy' and row['netqty'] > 0) or
-            (txn_type == 'Sell' and row['netqty'] < 0)
+            if (txn_type == "Buy" and row["netqty"] > 0)
+            or (txn_type == "Sell" and row["netqty"] < 0)
         ]
         return JSONResponse(content=filtered_rows)
 
@@ -767,11 +780,10 @@ async def positionbook(request: Request,
 
 
 @app.get("/orderbook/{user_id}", response_class=HTMLResponse)
-async def orderbook(request: Request,
-                    user_id: str = 'no data'):
-    ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-    ctx['th'] = ['message']
-    ctx['data'] = [user_id]
+async def orderbook(request: Request, user_id: str = "no data"):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    ctx["th"] = ["message"]
+    ctx["data"] = [user_id]
     for obj in L_USERS:
         if obj._userid == user_id:
             u = obj
@@ -779,54 +791,54 @@ async def orderbook(request: Request,
     if u:
         body = []
         pos = u.orders
-        lst_pos = pos.get('data', [])
+        lst_pos = pos.get("data", [])
         pop_keys = [
-            'variety',
-            'producttype',
-            'duration',
-            'price',
-            'squareoff',
-            'trailingstoploss',
-            'stoploss',
-            'triggerprice',
-            'disclosedquantity',
-            'exchange',
-            'symboltoken',
-            'ordertag',
-            'instrumenttype',
-            'expirydate',
-            'strikeprice',
-            'optiontype',
-            'filledshares',
-            'unfilledshares',
-            'cancelsize',
-            'status',
-            'exchtime',
-            'exchorderupdatetime',
-            'fillid',
-            'filltime',
-            'parentorderid'
+            "variety",
+            "producttype",
+            "duration",
+            "price",
+            "squareoff",
+            "trailingstoploss",
+            "stoploss",
+            "triggerprice",
+            "disclosedquantity",
+            "exchange",
+            "symboltoken",
+            "ordertag",
+            "instrumenttype",
+            "expirydate",
+            "strikeprice",
+            "optiontype",
+            "filledshares",
+            "unfilledshares",
+            "cancelsize",
+            "status",
+            "exchtime",
+            "exchorderupdatetime",
+            "fillid",
+            "filltime",
+            "parentorderid",
         ]
         if lst_pos:
             for f_dct in lst_pos:
                 [f_dct.pop(key) for key in pop_keys]
-                quantity = f_dct.pop('quantity', 0)
-                lotsize = f_dct.pop('lotsize', 0)
+                quantity = f_dct.pop("quantity", 0)
+                lotsize = f_dct.pop("lotsize", 0)
                 try:
                     lots = int(quantity) / int(lotsize)
                 except Exception as e:
                     print({e})
-                    f_dct['quantity'] = quantity
+                    f_dct["quantity"] = quantity
                 else:
-                    f_dct['quantity'] = int(lots)
+                    f_dct["quantity"] = int(lots)
                 k = f_dct.keys()
                 th = list(k)
                 v = f_dct.values()
                 td = list(v)
                 body.append(td)
             if len(body) > 0:
-                ctx['th'] = th
-                ctx['data'] = body
+                ctx["th"] = th
+                ctx["data"] = body
     return jt.TemplateResponse("table.html", ctx)
 
 
@@ -835,6 +847,7 @@ async def startup_event():
     if __import__("sys").platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     contracts()
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
