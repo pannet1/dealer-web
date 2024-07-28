@@ -10,9 +10,10 @@ xlrd
 pyotp
 jinja2
 orjson
-pandas
+pandas==1.5.3
 websocket-client
 sqlite4
 pydantic==1.10.13
 pendulum
 logzero
+pyyaml
