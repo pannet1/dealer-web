@@ -1,7 +1,13 @@
 # from fastapi_cprofile.profiler import CProfileMiddleware
+from concurrent.futures import ThreadPoolExecutor
 from api_helper import contracts, get_symbols, get_tkn_fm_sym
 from api_helper import resp_to_lst, lst_to_tbl
-from user_helper import order_place_by_user, order_modify_by_user, order_cancel_by_user
+from user_helper import (
+    order_place_by_user,
+    _order_place_by_user,
+    order_modify_by_user,
+    order_cancel_by_user,
+)
 from user import load_all_users
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -183,6 +189,10 @@ async def users(
 POST methods
 """
 
+executor = ThreadPoolExecutor(
+    max_workers=len(L_USERS)
+)  # Or define globally in your app
+
 
 @app.post("/orders/")
 async def post_orders(
@@ -200,55 +210,104 @@ async def post_orders(
     trigger: float = Form(),
 ):
     """
-    places orders for all clients
+    Places orders for all clients concurrently.
     """
-    mh, md, th, td = [], [], [], []
-    for i in range(len(client_name)):
-        obj_client = get_broker_by_id(client_name[i])
-        if qty[i] > 0:
-            txn_type = "BUY" if txn == "on" else "SELL"
-            if otype == 1:
-                ordertype = "LIMIT"
-                variety = "NORMAL"
-            elif otype == 2:
-                ordertype = "MARKET"
-                variety = "NORMAL"
-                price = 0
-            elif otype == 3:
-                ordertype = "STOPLOSS_LIMIT"
-                variety = "STOPLOSS"
-            elif otype == 4:
-                ordertype = "STOPLOSS_MARKET"
-                variety = "STOPLOSS"
+    tasks = []
+    loop = asyncio.get_running_loop()
 
-            if ptype == 1:
-                producttype = "CARRYFORWARD"
-            elif ptype == 2:
-                producttype = "INTRADAY"
-            elif ptype == 3:
-                producttype = "DELIVERY"
-            params = {
-                "variety": variety,
-                "tradingsymbol": symbol,
-                "symboltoken": token,
-                "transactiontype": txn_type,
-                "exchange": exchange,
-                "ordertype": ordertype,
-                "producttype": producttype,
-                "duration": "DAY",
-                "price": str(price),
-                "triggerprice": str(trigger),
-                "quantity": str(qty[i]),
-            }
-            mh, md, th, td = order_place_by_user(obj_client, params)
+    for i in range(len(client_name)):
+        client = get_broker_by_id(client_name[i])
+        if client is not None:
+            tasks.append(
+                loop.run_in_executor(
+                    executor,
+                    order_place_by_user,
+                    client,
+                    qty[i],
+                    symbol,
+                    token,
+                    txn,
+                    exchange,
+                    ptype,
+                    otype,
+                    price,
+                    lotsize,
+                    trigger,
+                )
+            )
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Merge all results
+    mh, md, th, td, errs = [], [], [], [], []
+
+    for result in results:
+        if isinstance(result, Exception):
+            # Catch any user-level failures
+            errs.append({"error": str(result)})
+        elif result:
+            mhi, mdi, thi, tdi = result
+            mh += mhi
+            md += mdi
+            th += thi
+            td += tdi
+
     ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
-    if len(mh) > 0:
+    if mh:
         ctx["mh"], ctx["md"] = mh, md
-        if len(th) > 0:
+        if th:
             ctx["th"], ctx["data"] = th, td
         return jt.TemplateResponse("table.html", ctx)
     else:
         return RedirectResponse("/orders", status_code=status.HTTP_302_FOUND)
+
+
+@app.post("/post_basket/")
+async def posted_basket(
+    request: Request,
+    price: List[str] = Form(),
+    trigger: List[str] = Form(),
+    quantity: List[str] = Form(),
+    client_name: List[str] = Form(),
+    transactiontype: List[str] = Form(),
+    exchange: List[str] = Form(),
+    tradingsymbol: List[str] = Form(),
+    token: List[str] = Form(),
+    ptype: List[str] = Form(),
+    otype: List[str] = Form(),
+):
+    """
+    TODO
+    places basket orders
+    """
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    mh, md, th, td = [], [], [], []
+    for i in range(len(price)):
+        obj_client = get_broker_by_id(client_name[i])
+        if otype[i] == "LIMIT":
+            variety = "NORMAL"
+        elif otype[i] == "MARKET":
+            variety = "NORMAL"
+        elif otype[i] == "STOPLOSS_LIMIT":
+            variety = "STOPLOSS"
+        elif otype[i] == "STOPLOSS_MARKET":
+            variety = "STOPLOSS"
+        params = {
+            "variety": variety,
+            "tradingsymbol": tradingsymbol[i],
+            "symboltoken": token[i],
+            "transactiontype": transactiontype[i],
+            "exchange": exchange[i],
+            "ordertype": otype[i],
+            "producttype": ptype[i],
+            "duration": "DAY",
+            "price": price[i],
+            "triggerprice": trigger[i],
+            "quantity": quantity[i],
+        }
+        _order_place_by_user(obj_client, params)
+    redirect_url = request.url_for("get_orders")
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/bulk_modified_order/")
@@ -267,9 +326,8 @@ async def post_bulk_modified_order(
     price: str = Form(),
 ):
     """
-    post modified orders in bulk
+    Post modified orders in bulk concurrently.
     """
-    mh, md, th, td = [], [], [], []
     if otype == 1:
         ordertype = "LIMIT"
         variety = "NORMAL"
@@ -282,39 +340,51 @@ async def post_bulk_modified_order(
     elif otype == 4:
         ordertype = "STOPLOSS_MARKET"
         variety = "STOPLOSS"
-
-    try:
-        for i in range(len(client_name)):
-            obj_client = get_broker_by_id(client_name[i])
-            params = {
-                "orderid": order_id[i],
-                "variety": variety,
-                "tradingsymbol": tradingsymbol,
-                "symboltoken": symboltoken,
-                "transactiontype": txn_type,
-                "exchange": exchange,
-                "ordertype": ordertype,
-                "producttype": producttype,
-                "price": price,
-                "quantity": quantity[i],
-                "triggerprice": triggerprice,
-                "duration": "DAY",
-            }
-            _, _, _, _ = order_modify_by_user(obj_client, params)
-        """
-            to be removed
-        ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-        if len(mh) > 0:
-            ctx['mh'], ctx['md'] = mh, md
-        if (len(th) > 0):
-            ctx['th'], ctx['data'] = th, td
-        return jt.TemplateResponse("table.html", ctx)
-        """
-    except Exception as e:
-        return JSONResponse(content={"E bulk order modifying": str(e)}, status_code=400)
     else:
-        redirect_url = request.url_for("get_orders")
-        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
+        ordertype = "LIMIT"
+        variety = "NORMAL"
+
+    loop = asyncio.get_running_loop()
+    tasks = []
+
+    for i in range(len(client_name)):
+        obj_client = get_broker_by_id(client_name[i])
+        if not obj_client:
+            continue
+
+        params = {
+            "orderid": order_id[i],
+            "variety": variety,
+            "tradingsymbol": tradingsymbol,
+            "symboltoken": symboltoken,
+            "transactiontype": txn_type,
+            "exchange": exchange,
+            "ordertype": ordertype,
+            "producttype": producttype,
+            "price": price,
+            "quantity": quantity[i],
+            "triggerprice": triggerprice,
+            "duration": "DAY",
+        }
+
+        tasks.append(
+            loop.run_in_executor(
+                executor,
+                order_modify_by_user,
+                obj_client,
+                params,
+            )
+        )
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Optional: Collect and log errors
+    errors = [r for r in results if isinstance(r, dict) and "error" in r]
+    if errors:
+        logging("Some order modifications failed:  {errors}")
+
+    redirect_url = request.url_for("get_orders")
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/order_modify/")
@@ -369,78 +439,11 @@ async def order_modify(
             "quantity": str(qty),
         }
         mh, md, th, td = order_modify_by_user(obj_client, params)
-        """
-        ctx = {"request": request, "title": inspect.stack()[0][3], 'pages': pages}
-        if len(mh) > 0:
-            ctx['mh'], ctx['md'] = mh, md
-        if (len(th) > 0):
-            ctx['th'], ctx['data'] = th, td
-        return jt.TemplateResponse("table.html", ctx)
-        """
     except Exception as e:
         return JSONResponse(content={"E order modifying": str(e)}, status_code=400)
     else:
         redirect_url = request.url_for("get_orders")
         return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
-
-
-@app.post("/post_basket/")
-async def posted_basket(
-    request: Request,
-    price: List[str] = Form(),
-    trigger: List[str] = Form(),
-    quantity: List[str] = Form(),
-    client_name: List[str] = Form(),
-    transactiontype: List[str] = Form(),
-    exchange: List[str] = Form(),
-    tradingsymbol: List[str] = Form(),
-    token: List[str] = Form(),
-    ptype: List[str] = Form(),
-    otype: List[str] = Form(),
-):
-    """
-    places basket orders
-    """
-    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
-    mh, md, th, td = [], [], [], []
-    for i in range(len(price)):
-        obj_client = get_broker_by_id(client_name[i])
-        if otype[i] == "LIMIT":
-            variety = "NORMAL"
-        elif otype[i] == "MARKET":
-            variety = "NORMAL"
-        elif otype[i] == "STOPLOSS_LIMIT":
-            variety = "STOPLOSS"
-        elif otype[i] == "STOPLOSS_MARKET":
-            variety = "STOPLOSS"
-        params = {
-            "variety": variety,
-            "tradingsymbol": tradingsymbol[i],
-            "symboltoken": token[i],
-            "transactiontype": transactiontype[i],
-            "exchange": exchange[i],
-            "ordertype": otype[i],
-            "producttype": ptype[i],
-            "duration": "DAY",
-            "price": price[i],
-            "triggerprice": trigger[i],
-            "quantity": quantity[i],
-        }
-        order_place_by_user(obj_client, params)
-        """
-        if len(mh) > 0:
-            ctx['mh'] = mh
-            ctx['md'].extend(md)
-        if (len(th) > 0):
-            ctx['th'] = th
-            ctx.setdefault('data', []).extend(td)
-        return jt.TemplateResponse("table.html", ctx)
-        except Exception as e:
-            return JSONResponse(content={"E place basket": str(e)}, status_code=400)
-        else:
-        """
-    redirect_url = request.url_for("get_orders")
-    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 """
@@ -844,8 +847,6 @@ async def orderbook(request: Request, user_id: str = "no data"):
 
 @app.on_event("startup")
 async def startup_event():
-    if __import__("sys").platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     contracts()
 
 
