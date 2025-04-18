@@ -27,7 +27,7 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
 """
 app.mount("/static", StaticFiles(directory="static"), name="static")
 jt = Jinja2Templates(directory="templates")
-pages = ["home", "margins", "orders", "trades", "positions", "new", "basket"]
+pages = ["home", "margins", "gtt", "orders", "trades", "positions", "new", "basket"]
 
 L_USERS = load_all_users()
 
@@ -144,6 +144,51 @@ def get_ltp(exch, sym, tkn):
     return head, ltp
 
 
+@app.get("/gtt", response_class=HTMLResponse)
+async def gtt(
+    request: Request,
+):
+    th, mh, md, td = [], [], [], []
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    ctx["th"] = ["message"]
+    ctx["data"] = ["no data"]
+    args = [
+        "stoplossprice",
+        "stoplosstriggerprice",
+        "gttType",
+        "status",
+        "createddate",
+        "updateddate",
+        "expirydate",
+        "clientid",
+        "tradingsymbol",
+        "symboltoken",
+        "exchange",
+        "producttype",
+        "transactiontype",
+        "price",
+        "qty",
+        "triggerprice" "disclosedqty",
+        "id",
+    ]
+    for a in L_USERS:
+        status = ["FORALL"]
+        resp = a.obj.gttLists(status=status, page=1, count=10)
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if "message" in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    if len(mh) > 0:
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
+        ctx["th"], ctx["data"] = th, td
+    return jt.TemplateResponse("table.html", ctx)
+
+
 @app.get("/home", response_class=HTMLResponse)
 @app.get("/", response_class=HTMLResponse)
 async def users(
@@ -197,8 +242,8 @@ executor = ThreadPoolExecutor(
 @app.post("/orders/")
 async def post_orders(
     request: Request,
-    qty: List[int],
     client_name: List[str],
+    qty: List[int],
     symbol: str = Form(),
     token: str = Form(),
     txn: Optional[str] = Form("off"),

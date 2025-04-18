@@ -16,6 +16,16 @@ def _order_place_by_user(obj_client, kwargs):
     return mh, md, th, td
 
 
+def _gtt_order_place_by_user(client, kwargs):
+    """client, qty, symbol, token, txn, exchange, ptype, price, trigger"""
+    try:
+        print("gtt args", kwargs)
+        rule_id = client.obj.gttCreateRule(kwargs)
+        print("The GTT rule id is: {}".format(rule_id))
+    except Exception as e:
+        print("GTT Rule creation failed: {}".format(e))
+
+
 def order_place_by_user(
     client, qty, symbol, token, txn, exchange, ptype, otype, price, lotsize, trigger
 ):
@@ -37,25 +47,38 @@ def order_place_by_user(
             ordertype, variety = "STOPLOSS_MARKET", "STOPLOSS"
 
         # Determine product type
-        producttype = {1: "CARRYFORWARD", 2: "INTRADAY", 3: "DELIVERY"}.get(
+        producttype = {1: "CARRYFORWARD", 2: "INTRADAY", 3: "DELIVERY", 4: "GTT"}.get(
             ptype, "INTRADAY"
         )
-
         params = {
-            "variety": variety,
             "tradingsymbol": symbol,
             "symboltoken": token,
             "transactiontype": txn_type,
             "exchange": exchange,
-            "ordertype": ordertype,
-            "producttype": producttype,
-            "duration": "DAY",
             "price": str(price),
             "triggerprice": str(trigger),
-            "quantity": str(qty),
         }
 
-        return _order_place_by_user(client, params)
+        if producttype == "GTT":
+            gtt_args = {
+                "qty": str(qty),
+                "disclosedqty": str(qty),
+                "timeperiod": 365,
+            }
+            params.update(gtt_args)
+            return _gtt_order_place_by_user(client, params)
+
+        else:
+            order_args = {
+                "quantity": str(qty),
+                "ordertype": ordertype,
+                "producttype": producttype,
+                "variety": variety,
+                "duration": "DAY",
+            }
+            params.update(order_args)
+            return _order_place_by_user(client, params)
+
     except Exception as e:
         return {"error": str(e), "user": getattr(client, "_userid", "unknown")}
 

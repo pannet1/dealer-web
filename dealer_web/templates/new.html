@@ -1,10 +1,16 @@
 {% extends "base.html" %}
+
+<div class="mx-auto container max-width-xl bg-indigo-300">
+</div>
+
 {%  block form  %}
-<form method='post' action='/orders/' id="frm" autocomplete="off" class="p-5 bg-red-300 w-full max-w-lg">
+<form method='post' action='/orders/' id="frm" autocomplete="off" 
+  class="p-4 mx-auto bg-red-300 w-full max-w-lg">
   <div class="btn-group">
     <input type="radio" name="ptype" value="1" data-title="NRML" class="btn btn-sm" checked />
     <input type="radio" name="ptype" value="2" data-title="MIS" class="btn btn-sm"  />
     <input type="radio" name="ptype" value="3" data-title="CNC" class="btn btn-sm" />
+    <input type="radio" name="ptype" value="4" data-title="GTT" class="btn btn-sm" />
   </div>
   <div class="btn-group lg:float-right">
     <input type="radio" name="otype" value="1" data-title="LMT" class="btn btn-sm" checked />
