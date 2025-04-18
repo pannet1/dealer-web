@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+<!-- The button to open modal -->
+{% block content %}
+<!-- container-->
+ <div class="mx-auto relative bg-indigo-100 h-screen w-screen">
+  <div class="mb-5 overflow-x-auto">
+    <table class="table table-xs table-pin-cols">
+      <thead>
+        <tr>
+          <th colspan='2'>Operations</th>
+          {% for k in th %}
+              <th>{{ 'txn' if k=='transactiontype' else k }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      {% for tr in data %}
+        <tr>
+          {% for v in tr %}
+          {% if v is string and '&' in v and 'bulk' in v %}
+              <td>
+                <a class="link link-error" href='{{ v }}'>BULK</a></button>
+              </td>
+            {% elif v is string and '&' in v and '_cancel' in v %}
+              <td>
+                <a class="link link-error" href='{{ v }}'>X</a></button>
+              </td>
+            {% elif v is string and ' ' in v and v | length>25  %}
+                <!-- td>{{ v | truncate(50, True) }}</td -->
+                <td>
+                  <div class="tooltip tooltip-error" data-tip="{{ v }}">
+                    <button class="btn btn-xs btn-error">?</button>
+                  </div>
+                </td>
+            {% elif v is string and v=='trigger pending' %}
+                <td class="bg-green-500">{{ v }}</td>
+            {% else  %}
+                <td>{{ v }}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+<div class="overflow-x-auto mb-5">
+ <table class="table table-xs">
+    <tr>
+    {% for k in mh %}
+        <th>{{ k }}</th>
+    {% endfor %}
+    </tr>
+    {% for tr in md %}
+    <tr>
+     {% for v in tr %}
+        <td>{{ v }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+  {% include 'footer.html' %}
+</div>
+{% endblock content %}

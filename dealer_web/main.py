@@ -7,6 +7,7 @@ from user_helper import (
     _order_place_by_user,
     order_modify_by_user,
     order_cancel_by_user,
+    order_gtt_modify_by_user,
 )
 from user import load_all_users
 from fastapi import FastAPI, Request, Form
@@ -41,6 +42,21 @@ def get_broker_by_id(client_name: str):
 def random_broker():
     i = random.randint(0, len(L_USERS) - 1)
     return L_USERS[i]
+
+
+def gtt(status=["FORALL"]):
+    th, td, mh, md = [], [], [], []
+    for a in L_USERS:
+        resp = a.obj.gttLists(status=status, page=1, count=100)
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, args=None, client_name=a.client_name)
+        if "message" in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    return mh, md, th, td
 
 
 def orders(args=None):
@@ -142,51 +158,6 @@ def get_ltp(exch, sym, tkn):
     head, ltp = lst_to_tbl(lst, ["ltp"], client_name=brkr.client_name)
     print(f"{ltp}")
     return head, ltp
-
-
-@app.get("/gtt", response_class=HTMLResponse)
-async def gtt(
-    request: Request,
-):
-    th, mh, md, td = [], [], [], []
-    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
-    ctx["th"] = ["message"]
-    ctx["data"] = ["no data"]
-    args = [
-        "stoplossprice",
-        "stoplosstriggerprice",
-        "gttType",
-        "status",
-        "createddate",
-        "updateddate",
-        "expirydate",
-        "clientid",
-        "tradingsymbol",
-        "symboltoken",
-        "exchange",
-        "producttype",
-        "transactiontype",
-        "price",
-        "qty",
-        "triggerprice" "disclosedqty",
-        "id",
-    ]
-    for a in L_USERS:
-        status = ["FORALL"]
-        resp = a.obj.gttLists(status=status, page=1, count=10)
-        lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    if len(mh) > 0:
-        ctx["mh"], ctx["md"] = mh, md
-    if len(th) > 0:
-        ctx["th"], ctx["data"] = th, td
-    return jt.TemplateResponse("table.html", ctx)
 
 
 @app.get("/home", response_class=HTMLResponse)
@@ -296,7 +267,7 @@ async def post_orders(
             md += mdi
             th += thi
             td += tdi
-
+    redirect_url = "/gtt" if ptype == 4 else "/orders"
     ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     if mh:
         ctx["mh"], ctx["md"] = mh, md
@@ -304,7 +275,7 @@ async def post_orders(
             ctx["th"], ctx["data"] = th, td
         return jt.TemplateResponse("table.html", ctx)
     else:
-        return RedirectResponse("/orders", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.post("/post_basket/")
@@ -355,6 +326,59 @@ async def posted_basket(
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
+@app.post("/bulk_modified_order_gtt/")
+async def post_bulk_modified_order_gtt(
+    request: Request,
+    client_name: List[str],
+    order_id: List[str],
+    quantity: List[str],
+    txn_type: str = Form(),
+    exchange: str = Form(),
+    symboltoken: str = Form(),
+    tradingsymbol: str = Form(),
+    triggerprice: str = Form(),
+    price: str = Form(),
+):
+    """
+    Post modified orders in bulk gtt concurrently.
+    """
+    loop = asyncio.get_running_loop()
+    tasks = []
+    for i in range(len(client_name)):
+        obj_client = get_broker_by_id(client_name[i])
+        if not obj_client:
+            continue
+        params = {
+            "id": order_id[i],
+            "tradingsymbol": tradingsymbol,
+            "symboltoken": symboltoken,
+            "txn": txn_type,
+            "exchange": exchange,
+            "price": price,
+            "qty": quantity[i],
+            "triggerprice": triggerprice,
+            "producttype": "MARGIN",
+        }
+        tasks.append(
+            loop.run_in_executor(
+                executor,
+                order_gtt_modify_by_user,
+                obj_client,
+                params,
+            )
+        )
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Optional: Collect and log errors
+    errors = [r for r in results if isinstance(r, dict) and "error" in r]
+    if errors:
+        logging("Some order modifications failed:  {errors}")
+
+    redirect_url = request.url_for("get_gtt")
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
+
+
 @app.post("/bulk_modified_order/")
 async def post_bulk_modified_order(
     request: Request,
@@ -365,29 +389,11 @@ async def post_bulk_modified_order(
     exchange: str = Form(),
     symboltoken: str = Form(),
     tradingsymbol: str = Form(),
-    otype: int = Form("0"),
-    producttype: str = Form(),
     triggerprice: str = Form(),
     price: str = Form(),
+    # otype: int = Form("0"),
+    producttype: str = Form(),
 ):
-    """
-    Post modified orders in bulk concurrently.
-    """
-    if otype == 1:
-        ordertype = "LIMIT"
-        variety = "NORMAL"
-    elif otype == 2:
-        ordertype = "MARKET"
-        variety = "NORMAL"
-    elif otype == 3:
-        ordertype = "STOPLOSS_LIMIT"
-        variety = "STOPLOSS"
-    elif otype == 4:
-        ordertype = "STOPLOSS_MARKET"
-        variety = "STOPLOSS"
-    else:
-        ordertype = "LIMIT"
-        variety = "NORMAL"
 
     loop = asyncio.get_running_loop()
     tasks = []
@@ -399,12 +405,12 @@ async def post_bulk_modified_order(
 
         params = {
             "orderid": order_id[i],
-            "variety": variety,
+            # "variety": variety,
             "tradingsymbol": tradingsymbol,
             "symboltoken": symboltoken,
             "transactiontype": txn_type,
             "exchange": exchange,
-            "ordertype": ordertype,
+            # "ordertype": ordertype,
             "producttype": producttype,
             "price": price,
             "quantity": quantity[i],
@@ -428,7 +434,7 @@ async def post_bulk_modified_order(
     if errors:
         logging("Some order modifications failed:  {errors}")
 
-    redirect_url = request.url_for("get_orders")
+    redirect_url = request.url_for("get_gtt")
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
@@ -494,6 +500,31 @@ async def order_modify(
 """
 GET methods
 """
+
+
+@app.get("/order_gtt_cancel/")
+def order_gtt_cancel(
+    request: Request,
+    client_name: str,
+    tradingsymbol: str,
+    symboltoken: str,
+    exchange: str,
+    producttype: str,
+    id: str,
+):
+    client = get_broker_by_id(client_name)
+    params = {
+        "id": id,
+        "tradingsymbol": tradingsymbol,
+        "symboltoken": symboltoken,
+        "exchange": exchange,
+        "producttype": producttype,
+    }
+    resp = client.obj.gttCancelRule(params)
+    print(resp)
+    if resp:
+        redirect_url = request.url_for("get_gtt")
+        return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @app.get("/order_cancel/")
@@ -578,6 +609,61 @@ async def get_bulk_modify_order(
     subs["trigger"] = 0
     ctx["subs"] = [subs]
     return jt.TemplateResponse("orders_modify.html", ctx)
+
+
+@app.get("/bulk_modify_gtt_order/", response_class=HTMLResponse)
+async def get_bulk_modify_gtt_order(
+    request: Request,
+    exchange: str,
+    tradingsymbol: str,
+    symboltoken: str,
+    transactiontype: str,
+    status: str,
+):
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    subs = {
+        "exchange": exchange,
+        "tradingsymbol": tradingsymbol,
+        "symboltoken": symboltoken,
+        "transactiontype": transactiontype,
+        "status": status,
+    }
+    mh, md, th, td = gtt()
+    if len(th) > 0:
+        ords = []
+        for tr in td:
+            ords.append(dict(zip(th, tr)))
+        fltr = []
+        for ord in ords:
+            success = True
+            for k, v in subs.items():
+                if ord.get(k) != v:
+                    success = False
+                    break
+            if success:
+                fltr.append(ord)
+
+        if any(fltr):
+            fdata = []
+            for f in fltr:
+                fdata.append(
+                    [
+                        f.get("client_name"),
+                        f.get("id"),
+                        str(f.get("price")) + "/" + str(f.get("triggerprice")),
+                        f.get("qty"),
+                    ]
+                )
+            ctx["th"], ctx["data"] = (
+                ["client_name", "id", "prc/trgr", "quantity"],
+                fdata,
+            )
+    _, flt_ltp = get_ltp(subs["exchange"], subs["tradingsymbol"], subs["symboltoken"])
+    subs["price"] = flt_ltp[0][0]
+    subs["trigger"] = 0
+    subs["producttype"] = "GTT"
+    ctx["subs"] = [subs]
+    return jt.TemplateResponse("orders_gtt_modify.html", ctx)
 
 
 @app.get("/close_position_by_users/", response_class=HTMLResponse)
@@ -673,6 +759,61 @@ async def get_orders(request: Request):
             ord.insert(0, url)
         ctx["th"], ctx["data"] = th, td
     return jt.TemplateResponse("orders.html", ctx)
+
+
+@app.get("/gtt", response_class=HTMLResponse)
+async def get_gtt(
+    request: Request,
+):
+    th, mh, md, td = [], [], [], []
+    ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
+    ctx["th"] = ["message"]
+    ctx["data"] = ["no data"]
+    args = [
+        # "stoplossprice",
+        # "stoplosstriggerprice",
+        # "gttType",
+        "status",
+        "createddate",
+        # "updateddate",
+        # "expirydate",
+        "clientid",
+        "tradingsymbol",
+        "symboltoken",
+        "exchange",
+        "producttype",
+        "transactiontype",
+        "price",
+        "qty",
+        "triggerprice",
+        # "disclosedqty",
+        "id",
+    ]
+    for a in L_USERS:
+        status = ["FORALL"]
+        resp = a.obj.gttLists(status=status, page=1, count=100)
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
+        if "message" in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+    if len(mh) > 0:
+        ctx["mh"], ctx["md"] = mh, md
+    if len(th) > 0:
+        for ord in td:
+            dct = dict(zip(th, ord))
+            url1 = "/bulk_modify_gtt_order/?"
+            url2 = "/order_gtt_cancel/?"
+            for k, v in dct.items():
+                url1 += f"{k}={v}&"
+                url2 += f"{k}={v}&"
+            ord.insert(0, url1)
+            ord.insert(0, url2)
+        ctx["th"], ctx["data"] = th, td
+    return jt.TemplateResponse("orders_gtt.html", ctx)
 
 
 @app.get("/positions", response_class=HTMLResponse)

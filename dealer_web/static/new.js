@@ -131,7 +131,6 @@ copyButton.addEventListener('click', () => {
     newRow.appendChild(tknInputField);
 
     /* css styling and beautification */
-
     const statTitleDiv = document.createElement('div');
     statTitleDiv.textContent = priceInput.value + " / " + triggerInput.value
 
@@ -162,7 +161,6 @@ copyButton.addEventListener('click', () => {
 
     }
     /* end of css beautification */
-
     targetTable.appendChild(newRow);
   });
 

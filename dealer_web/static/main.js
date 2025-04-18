@@ -41,6 +41,3 @@ const tblColCnt = (tableId, colNumber, ttlTagName) =>
      elemTtl.innerHTML = parseInt(result);
   }
 }
-
-
-

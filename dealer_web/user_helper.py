@@ -19,7 +19,6 @@ def _order_place_by_user(obj_client, kwargs):
 def _gtt_order_place_by_user(client, kwargs):
     """client, qty, symbol, token, txn, exchange, ptype, price, trigger"""
     try:
-        print("gtt args", kwargs)
         rule_id = client.obj.gttCreateRule(kwargs)
         print("The GTT rule id is: {}".format(rule_id))
     except Exception as e:
@@ -61,6 +60,7 @@ def order_place_by_user(
 
         if producttype == "GTT":
             gtt_args = {
+                "producttype": "MARGIN",
                 "qty": str(qty),
                 "disclosedqty": str(qty),
                 "timeperiod": 365,
@@ -81,6 +81,28 @@ def order_place_by_user(
 
     except Exception as e:
         return {"error": str(e), "user": getattr(client, "_userid", "unknown")}
+
+
+def order_gtt_modify_by_user(obj_client, kwargs):
+    th, td, mh, md = [], [], [], []
+
+    try:
+        resp = obj_client.obj.gttModifyRule(kwargs)
+        lst = resp_to_lst(resp)
+        th1, td1 = lst_to_tbl(lst, client_name=obj_client.client_name)
+
+        if "message" in th1:
+            mh = th1
+            md += td1
+        else:
+            th = th1
+            td += td1
+
+    except Exception as e:
+        mh = ["Exception"]
+        md = [[obj_client.client_name, str(e)]]
+
+    return mh, md, th, td
 
 
 def order_modify_by_user(obj_client, kwargs):
