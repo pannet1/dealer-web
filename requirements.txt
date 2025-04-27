@@ -11,6 +11,7 @@ pyyaml
 pyotp
 pendulum==2.1.2
 git+https://github.com/ecomsense/stock-brokers.git
+git+https://github.com/pannet1/toolkit.git
 orjson
 websocket-client
 logzero
