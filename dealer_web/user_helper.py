@@ -109,7 +109,9 @@ def order_modify_by_user(obj_client, kwargs):
     th, td, mh, md = [], [], [], []
 
     try:
+        print(f"order modify by user param {kwargs}")
         resp = obj_client.order_modify(kwargs)
+        print(f"order modify response {resp}")
         lst = resp_to_lst(resp)
         th1, td1 = lst_to_tbl(lst, client_name=obj_client.client_name)
 

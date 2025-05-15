@@ -373,7 +373,7 @@ async def post_bulk_modified_order_gtt(
     # Optional: Collect and log errors
     errors = [r for r in results if isinstance(r, dict) and "error" in r]
     if errors:
-        logging("Some order modifications failed:  {errors}")
+        print(f"Some order modifications failed:  {errors}")
 
     redirect_url = request.url_for("get_gtt")
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
@@ -432,9 +432,9 @@ async def post_bulk_modified_order(
     # Optional: Collect and log errors
     errors = [r for r in results if isinstance(r, dict) and "error" in r]
     if errors:
-        logging("Some order modifications failed:  {errors}")
+        print("Some order modifications failed:  {errors}")
 
-    redirect_url = request.url_for("get_gtt")
+    redirect_url = request.url_for("get_orders")
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
