@@ -1,0 +1,14 @@
+<ul>
+  {% for action in alert.actions %}
+    <li>
+      <form hx-delete="/alerts/{{ alert.id }}/{{ action.id }}" hx-swap="outerHTML" hx-target="#alerts" style="display:inline">
+        <button 
+          hx-confirm="Are you sure you want to delete this alert?" 
+          hx-target="#alerts" 
+          hx-swap="outerHTML">
+          Delete Action
+        </button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>

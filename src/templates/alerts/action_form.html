@@ -1,0 +1,9 @@
+<form hx-post="/alerts/action/add" hx-swap="outerHTML" hx-target="#alerts">
+  <input name="type" placeholder="Action type (e.g. email, shell)" required />
+  <input
+    name="params"
+    placeholder='Params as JSON (e.g. {"to": "admin@example.com"})'
+    required
+  />
+  <button type="submit">Add Action</button>
+</form>

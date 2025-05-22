@@ -1,0 +1,8 @@
+<li id="alert-{{ alert.id }}" class="mb-2">
+  <!-- this alters the layou of the alerts -->
+  <strong>{{ alert.name }}</strong> {{ alert.description }} <button hx-delete="/alerts/{{ alert.id }}" hx-target="#alert-{{ alert.id }}" hx-swap="outerHTML">Delete</button>
+  {% include "alerts/action_list.html" %} 
+  {% include "alerts/action_form.html" %}
+</li>
+
+

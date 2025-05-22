@@ -9,17 +9,31 @@ from user_helper import (
     order_cancel_by_user,
     order_gtt_modify_by_user,
 )
-from user import load_all_users
+from user import (
+    # load_all_users,
+    get_broker_by_id,
+    gtt,
+    orders,
+    trades,
+    positions,
+    margins,
+    get_ltp,
+)
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 import starlette.status as status
 import inspect
 import uvicorn
 import asyncio
-import random
+from jinja_template import jt
+from alerts import router as alerts_router
+
+
+def load_all_users():
+    return []
+
 
 app = FastAPI()
 """
@@ -27,137 +41,18 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
                    filename='output.pstats', strip_dirs=False, sort_by='cumulative')
 """
 app.mount("/static", StaticFiles(directory="static"), name="static")
-jt = Jinja2Templates(directory="templates")
-pages = ["home", "margins", "gtt", "orders", "trades", "positions", "new", "basket"]
-
-L_USERS = load_all_users()
-
-
-def get_broker_by_id(client_name: str):
-    for a in L_USERS:
-        if a.client_name == client_name:
-            return a
-
-
-def random_broker():
-    i = random.randint(0, len(L_USERS) - 1)
-    return L_USERS[i]
-
-
-def gtt(status=["FORALL"]):
-    th, td, mh, md = [], [], [], []
-    for a in L_USERS:
-        resp = a.obj.gttLists(status=status, page=1, count=100)
-        lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args=None, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def orders(args=None):
-    th, td, mh, md = [], [], [], []
-    for a in L_USERS:
-        resp = a.orders
-        lst = resp_to_lst(resp)
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def trades():
-    th, td, mh, md = [], [], [], []
-    for a in L_USERS:
-        resp = a.trades
-        lst = resp_to_lst(resp)
-        args = [
-            "tradingsymbol",
-            "optiontype",
-            "transactiontype",
-            "tradevalue",
-            "fillprice",
-        ]
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def positions():
-    th, td, mh, md = [], [], [], []
-    for a in L_USERS:
-        resp = a.positions
-        lst = resp_to_lst(resp)
-        args = [
-            "exchange",
-            "tradingsymbol",
-            "producttype",
-            "optiontype",
-            "netqty",
-            "pnl",
-            "ltp",
-            "avgnetprice",
-            "netprice",
-        ]
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def margins(args=None):
-    th, td, mh, md = [], [], [], []
-    for a in L_USERS:
-        resp = a.margins
-        if resp.get("data") is not None:
-            resp["data"]["userid"] = a._userid
-        lst = resp_to_lst(resp)
-        if not args:
-            args = [
-                "userid",
-                "net",
-                "availablecash",
-                "m2munrealized",
-                "utiliseddebits",
-                "utilisedpayout",
-            ]
-        th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
-        if "message" in th1:
-            mh = th1
-            md += td1
-        else:
-            th = th1
-            td += td1
-    return mh, md, th, td
-
-
-def get_ltp(exch, sym, tkn):
-    brkr = random_broker()
-    print(exch, sym, tkn)
-    resp = brkr.obj.ltpData(exch, sym, tkn)
-    print(f"{resp:}")
-    lst = resp_to_lst(resp)
-    print(f"{lst}")
-    head, ltp = lst_to_tbl(lst, ["ltp"], client_name=brkr.client_name)
-    print(f"{ltp}")
-    return head, ltp
+app.include_router(alerts_router)
+pages = [
+    "home",
+    "margins",
+    "gtt",
+    "orders",
+    "trades",
+    "positions",
+    "new",
+    "basket",
+    "alerts",
+]
 
 
 @app.get("/home", response_class=HTMLResponse)
@@ -169,7 +64,7 @@ async def users(
     ctx["th"] = ["message"]
     ctx["data"] = ["no data"]
     body = []
-    for row in L_USERS:
+    for row in load_all_users():
         th = ["user id", "target", "max loss", "disabled", "orders", "pnl"]
         td = [
             row._userid,
@@ -206,7 +101,7 @@ POST methods
 """
 
 executor = ThreadPoolExecutor(
-    max_workers=len(L_USERS)
+    max_workers=max(len(load_all_users()), 1)
 )  # Or define globally in your app
 
 
@@ -502,6 +397,10 @@ GET methods
 """
 
 
+@app.get("/alerts")
+def get_alerts(request: Request): ...
+
+
 @app.get("/order_gtt_cancel/")
 def order_gtt_cancel(
     request: Request,
@@ -789,7 +688,7 @@ async def get_gtt(
         # "disclosedqty",
         "id",
     ]
-    for a in L_USERS:
+    for a in load_all_users():
         status = ["FORALL"]
         resp = a.obj.gttLists(status=status, page=1, count=100)
         lst = resp_to_lst(resp)
@@ -892,7 +791,7 @@ async def positionbook(
     ctx["th"] = ["message"]
     ctx["data"] = [user_id]
 
-    for obj in L_USERS:
+    for obj in load_all_users():
         if obj._userid == user_id:
             u = obj
             break
@@ -973,7 +872,7 @@ async def orderbook(request: Request, user_id: str = "no data"):
     ctx = {"request": request, "title": inspect.stack()[0][3], "pages": pages}
     ctx["th"] = ["message"]
     ctx["data"] = [user_id]
-    for obj in L_USERS:
+    for obj in load_all_users():
         if obj._userid == user_id:
             u = obj
             break

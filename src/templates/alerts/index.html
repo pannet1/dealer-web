@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+  <h1>Alerts</h1>
+
+  <!-- Add Alert Form -->
+  <form action="/alerts" method="post">
+    <input name="name" placeholder="Alert name" required>
+    <input name="description" placeholder="Description" required>
+    <button type="submit">Add Alert</button>
+  </form>
+
+  <!-- Alert List -->
+  <ul>
+    {% for alert in alerts %}
+      <li>
+        <div style="display: flex; align-items: center; gap: 1em;">
+        <strong>{{ alert.name }}</strong> 
+        {{ alert.description }}
+        <!-- Delete Alert -->
+        <form action="/alerts/{{ alert.id }}/delete" method="post">
+          <input type="hidden" name="_method" value="delete">  <!-- optional if middleware handles DELETE -->
+          <button type="submit">Delete</button>
+        </form>
+        </div>
+
+        <!-- Action List -->
+        {% if alert.actions %}
+        <ul>
+          {% for action in alert.actions %}
+            <li>
+              [{{ action.type }}] {{ action.params }}
+              <form action="/alerts/{{ alert.id }}/{{ action.id }}" method="post" style="display:inline;">
+                <input type="hidden" name="_method" value="delete">
+                <button type="submit">Delete Action</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        <!-- Add Action -->
+        <form action="/alerts/{{ alert.id }}/action" method="post">
+          <input name="type" placeholder="Action type (e.g. email, shell)" required>
+          <input name="to" placeholder="Param key (e.g. to/admin/etc)" required>
+          <input name="value" placeholder="Param value" required>
+          <button type="submit">Add Action</button>
+        </form>
+      </li>
+    {% else %}
+      <li>No alerts found.</li>
+    {% endfor %}
+  </ul>
+
+{% endblock %}
+
+

@@ -1,0 +1,9 @@
+<form
+  hx-post="/alerts"
+  hx-trigger="submit"
+  hx-on::after-request="htmx.ajax('GET', '/alerts/list', { target: '#alert-list', swap: 'innerHTML' })"
+>
+  <input name="name" placeholder="Alert name" required />
+  <input name="description" placeholder="Description" required />
+  <button type="submit">Add Alert</button>
+</form>
