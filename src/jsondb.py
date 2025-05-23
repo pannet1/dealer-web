@@ -41,12 +41,13 @@ class JsonDB:
     def get_alert(self, alert_id: int) -> Optional[dict]:
         return next((a for a in self.data["alerts"] if a["id"] == alert_id), None)
 
-    def add_alert(self, name: str, description: str):
+    def add_alert(self, name: str, above: str, below: str):
         self.data["alerts"].append(
             {
                 "id": 0,  # will be re-enumerated
                 "name": name,
-                "description": description,
+                "above": above,
+                "below": below,
                 "actions": [],
             }
         )
