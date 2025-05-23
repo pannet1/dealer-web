@@ -57,14 +57,14 @@ class JsonDB:
         self.data["alerts"] = [a for a in self.data["alerts"] if a["id"] != alert_id]
         self.save()
 
-    def add_action(self, alert_id: int, action_type: str, params: dict):
+    def add_action(self, alert_id: int, event: str, action: str):
         alert = self.get_alert(alert_id)
         if alert is not None:
             alert["actions"].append(
                 {
                     "id": 0,  # will be re-enumerated
-                    "type": action_type,
-                    "params": params,
+                    "event": event,
+                    "action": action,
                 }
             )
             self.save()

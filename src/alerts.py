@@ -49,11 +49,12 @@ action
 @router.post("/alerts/{alert_id}/action")
 async def add_action(
     alert_id: int,
-    type: str = Form(...),
+    event: str = Form(...),
+    action: str = Form(...),
     db: JsonDB = Depends(get_jsondb),
 ):
-    params = {"type": type}
-    db.add_action(alert_id, type, params)
+    if event != "0" and action != "0":
+        db.add_action(alert_id, event, action)
     return RedirectResponse("/alerts", status_code=HTTP_302_FOUND)
 
 
