@@ -1,58 +1,86 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- container-->
-  <div class="overflow-auto">
 
-  <!-- Add Alert Form -->
-  <form action="/alerts" method="post">
-    <input name="name" placeholder="Alert name" required>
-    <input name="description" placeholder="Description" required>
-    <button type="submit">Add Alert</button>
-  </form>
+<div class="container mx-auto p-4 sm:p-8">
 
-  <!-- Alert List -->
-  <table>
-    {% for alert in alerts %}
-      <li>
-        <div style="display: flex; align-items: center; gap: 1em;">
-        <strong>{{ alert.name }}</strong> 
-        {{ alert.description }}
-        <!-- Delete Alert -->
-        <form action="/alerts/{{ alert.id }}/delete" method="post">
-          <input type="hidden" name="_method" value="delete">  <!-- optional if middleware handles DELETE -->
-          <button type="submit">Delete</button>
-        </form>
+  <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Add New Alert</h2>
+    <form action="/alerts" method="post" class="space-y-4">
+      <input type="text" name="name" placeholder="Alert name" required
+        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <input type="text" name="description" placeholder="Description" required
+        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button type="submit"
+        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        Add Alert
+      </button>
+    </form>
+  </div>
+
+  <div class="bg-white shadow-md rounded-lg p-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Alerts</h2>
+    {% if alerts %}
+    <div class="space-y-6">
+      {% for alert in alerts %}
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-4">
+            <strong class="text-xl font-semibold text-gray-900">{{ alert.name }}</strong>
+            <span class="text-gray-600">{{ alert.description }}</span>
+          </div>
+          <form action="/alerts/{{ alert.id }}" method="post">
+            <input type="hidden" name="_method" value="delete">
+            <button type="submit"
+              class="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm">
+              Delete
+            </button>
+          </form>
         </div>
 
-        <!-- Action List -->
         {% if alert.actions %}
-        <ul>
+        <h4 class="text-lg font-medium text-gray-700 mb-2">Actions:</h4>
+        <ul class="list-disc list-inside ml-4 space-y-1">
           {% for action in alert.actions %}
-            <li>
-              [{{ action.type }}] {{ action.params }}
-              <form action="/alerts/{{ alert.id }}/{{ action.id }}" method="post" style="display:inline;">
-                <input type="hidden" name="_method" value="delete">
-                <button type="submit">Delete Action</button>
-              </form>
-            </li>
+          <li class="text-gray-700">
+            <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md">[{{ action.type }}]</span>
+            <span class="text-gray-800">{{ action.params }}</span>
+            <form action="/alerts/{{ alert.id }}/action/{{ action.id }}" method="post" class="inline ml-2">
+              <input type="hidden" name="_method" value="delete">
+              <button type="submit"
+                class="text-red-500 hover:text-red-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 rounded-md">
+                Delete Action
+              </button>
+            </form>
+          </li>
           {% endfor %}
         </ul>
         {% endif %}
 
-        <!-- Add Action -->
-        <form action="/alerts/{{ alert.id }}/action" method="post">
-          <input name="type" placeholder="Action type (e.g. email, shell)" required>
-          <input name="to" placeholder="Param key (e.g. to/admin/etc)" required>
-          <input name="value" placeholder="Param value" required>
-          <button type="submit">Add Action</button>
-        </form>
-      </li>
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <h4 class="text-lg font-medium text-gray-700 mb-2">Add New Action:</h4>
+          <form action="/alerts/{{ alert.id }}/action" method="post" class="flex flex-col sm:flex-row gap-3">
+            <input type="text" name="type" placeholder="Action type (e.g. email, shell)" required
+              class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <input type="text" name="to" placeholder="Param key (e.g. to/admin/etc)" required
+              class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <input type="text" name="value" placeholder="Param value" required
+              class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <button type="submit"
+              class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm">
+              Add Action
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
     {% else %}
-      <li>No alerts found.</li>
-    {% endfor %}
-  </table>
+    <p class="text-gray-600 italic">No alerts found.</p>
+    {% endif %}
+  </div>
+
+</div>
 
 {% endblock %}
-
 

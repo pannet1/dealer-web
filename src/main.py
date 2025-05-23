@@ -10,7 +10,7 @@ from user_helper import (
     order_gtt_modify_by_user,
 )
 from user import (
-    # load_all_users,
+    load_all_users,
     get_broker_by_id,
     gtt,
     orders,
@@ -29,10 +29,6 @@ import uvicorn
 import asyncio
 from jinja_template import jt
 from alerts import router as alerts_router
-
-
-def load_all_users():
-    return []
 
 
 app = FastAPI()

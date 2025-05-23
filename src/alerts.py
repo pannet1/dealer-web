@@ -10,13 +10,14 @@ router = APIRouter()
 def get_jsondb():
     return JsonDB("../../alerts.json")
 
-
+"""
+    alerts
+"""
 @router.get("/alerts", response_class=HTMLResponse)
 async def view_alerts(request: Request, db: JsonDB = Depends(get_jsondb)):
     return jt.TemplateResponse(
         "alerts.html", {"request": request, "alerts": db.get_alerts()}
     )
-
 
 @router.post("/alerts", response_class=HTMLResponse)
 async def add_alert(
@@ -29,40 +30,27 @@ async def add_alert(
     return RedirectResponse("/alerts", status_code=302)
 
 
-@router.post("/alerts", response_class=HTMLResponse)
-async def create_alert(
-    request: Request,
-    name: str = Form(...),
-    description: str = Form(...),
-    db: JsonDB = Depends(get_jsondb),
-):
 
-    alert = db.add_alert(name, description)
-    # Render only the single alert item partial
-    return jt.TemplateResponse(
-        "alerts/alert_item.html",
-        {"request": request, "alert": alert},  # Note: not alerts, just single `alert`
-    )
-
-
-@router.post("/alerts/{alert_id}/delete")
+@router.post("/alerts/{alert_id}")
 async def delete_alert(alert_id: int, db: JsonDB = Depends(get_jsondb)):
     db.delete_alert(alert_id)
     return RedirectResponse("/alerts", status_code=302)
 
 
+"""
+action
+"""
 @router.post("/alerts/{alert_id}/action")
 async def add_action(
     alert_id: int,
     type: str = Form(...),
     db: JsonDB = Depends(get_jsondb),
-    **params: str
 ):
+    params = {"type": type}
     db.add_action(alert_id, type, params)
     return RedirectResponse("/alerts", status_code=HTTP_302_FOUND)
 
-
-@router.delete("/alerts/{alert_id}/{action_id}")
+@router.post("/alerts/{alert_id}/action/{action_id}")
 async def delete_action(
     alert_id: int, action_id: int, db: JsonDB = Depends(get_jsondb)
 ):
