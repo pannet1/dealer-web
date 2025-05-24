@@ -1,7 +1,7 @@
 # from fastapi_cprofile.profiler import CProfileMiddleware
 from concurrent.futures import ThreadPoolExecutor
 from api_helper import contracts, get_symbols, get_tkn_fm_sym
-from api_helper import resp_to_lst, lst_to_tbl
+from api_helper import resp_to_lst, lst_to_tbl, pages
 from user_helper import (
     order_place_by_user,
     _order_place_by_user,
@@ -38,17 +38,6 @@ app.add_middleware(CProfileMiddleware, enable=True, server_app=app,
 """
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(alerts_router)
-pages = [
-    "home",
-    "margins",
-    "gtt",
-    "orders",
-    "trades",
-    "positions",
-    "new",
-    "basket",
-    "alerts",
-]
 
 
 @app.get("/home", response_class=HTMLResponse)

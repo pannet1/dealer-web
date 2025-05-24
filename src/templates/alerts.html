@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-  <div class="container mx-auto w-full">
+  <div class="container mx-auto my-4 w-full">
     <div class="bg-prim shadow-md">
       <form action="/alerts" method="post" class="flex flex-wrap gap-4 items-center">
         <input type="text" name="name" placeholder="stock name" required
@@ -101,4 +101,4 @@
     {% endif %}
 
   </div><!-- flex container holding cards -->
-{% endblock %}
+{% endblock content %}

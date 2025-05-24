@@ -3,6 +3,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from jsondb import JsonDB  # Adjust based on your layout
 from jinja_template import jt
+import inspect
+from api_helper import pages
 
 router = APIRouter()
 
@@ -19,7 +21,13 @@ def get_jsondb():
 @router.get("/alerts", response_class=HTMLResponse)
 async def view_alerts(request: Request, db: JsonDB = Depends(get_jsondb)):
     return jt.TemplateResponse(
-        "alerts.html", {"request": request, "alerts": db.get_alerts()}
+        "alerts.html",
+        {
+            "request": request,
+            "alerts": db.get_alerts(),
+            "title": inspect.stack()[0][3],
+            "pages": pages,
+        },
     )
 
 

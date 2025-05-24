@@ -3,6 +3,18 @@ from requests import get
 import pickle
 import json
 
+pages = [
+    "home",
+    "margins",
+    "gtt",
+    "orders",
+    "trades",
+    "positions",
+    "new",
+    "basket",
+    "alerts",
+]
+
 
 def contracts():
     if futil.is_file_not_2day(dumpfile):

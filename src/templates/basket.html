@@ -2,6 +2,7 @@
 {%  block content  %}
 <!-- begin seperation content -->
 <div class="flex flex-col w-full lg:flex-row">
+
   <!--  begin input form on the left side -->
   <div class="grid flex-grow h-32 card place-items-center max-w-lg">
     <form id="frm" autocomplete="off" class="p-2 bg-red-300">
@@ -101,6 +102,7 @@
   </div> 
   <!-- end of area 1 left side form input -->
 {% endblock content %}
+
 {% block basket %}
     <!-- right side basket area -->
       <form action="/post_basket/" method="POST">
@@ -112,9 +114,9 @@
           value="basket"/>
         </div>
       </form>
-  </div>
 <!-- end of seperation content -->
 {% endblock basket %}
+</div>
 
 
 
