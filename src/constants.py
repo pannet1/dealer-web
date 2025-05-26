@@ -5,6 +5,7 @@ sec_dir = "../../"
 dumpfile = sec_dir + "symbols.json"
 XLS = sec_dir + "ao_users.xls"
 futil = Fileutils()
-
+alerts_json = "../../alerts.json"
 
 # handler = SpreadDB("../../spread.db")
+#
