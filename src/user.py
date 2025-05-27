@@ -164,7 +164,30 @@ def margins(args=None):
             td += td1
     return mh, md, th, td
 
+def get_ltps(params: dict) -> dict:
+    try:
+        new_dct = {}
+        exch, lst_of_tokens = exch_token(params)
 
+        # Batch the tokens into chunks of 50
+        batch_size = 50
+        for i in range(0, len(lst_of_tokens), batch_size):
+            timer(1)
+            token_batch: list = lst_of_tokens[i : i + batch_size]
+            exch_token_dict = {exch: token_batch}
+
+            # Fetch LTP for the current batch
+            resp = Helper.api.obj.getMarketData("LTP", exch_token_dict)
+            lst_of_dict = resp["data"]["fetched"]
+
+            if isinstance(lst_of_dict, list):
+                # Update the dictionary with the current batch's LTPs
+                new_dct.update({dct["symbolToken"]: dct["ltp"] for dct in lst_of_dict})
+    except Exception as e:
+        print(f"Error while getting LTP: {e}")
+    finally:
+        return new_dct
+        
 def get_ltp(exch, sym, tkn):
     brkr = _random_broker()
     print(exch, sym, tkn)
