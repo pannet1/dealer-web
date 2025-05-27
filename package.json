@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.7",
+    "daisyui": "^5.0.37",
+    "tailwindcss": "^4.1.7"
+  },
+  "name": "dealer-web",
+  "version": "1.0.0",
+  "description": "This project is for semi-auto copying of trades on Angel Broking",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "npx @tailwindcss/cli -i input.css -o src/static/main.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pannet1/dealer-web.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pannet1/dealer-web/issues"
+  },
+  "homepage": "https://github.com/pannet1/dealer-web#readme"
+}
