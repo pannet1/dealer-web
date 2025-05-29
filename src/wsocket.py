@@ -68,7 +68,26 @@ class Wsocket(threading.Thread):
     def subscribe(self, token: Dict[str, Any]):
         self.token_list.append(token)
         print(self.token_list)
-        self.sws.subscribe(correlation_id="spread", mode=1, token_list=self.token_list)
+        self.sws.subscribe(correlation_id="spread", mode=3, token_list=self.token_list)
 
     def unsubscribe(self, lst_token, correlation_id="spread", mode=1):
         self.sws.unsubscribe(correlation_id, mode, lst_token)
+
+
+if __name__ == "__main__":
+    from user import _random_broker
+
+    h = _random_broker()
+    kwargs = dict(
+        auth_token=h.access_token,
+        api_key=h._api_key,
+        client_code=h._user_id,
+        feed_token=h.obj.feed_token,
+    )
+    token = {
+            "exchangeType": 1,
+            "tokens": ["26000", "26009"],
+        }
+    wsocket = Wsocket(kwargs=kwargs, token=token)
+    wsocket.run()
+

@@ -10,7 +10,6 @@ _USERS = None
 
 
 def load_all_users():
-    print("loading users")
     global _USERS
     if _USERS is None:
         _USERS = []
@@ -19,6 +18,7 @@ def load_all_users():
             pklfile = sec_dir + user["user_id"] + ".pkl"
             flag = futil.is_file_not_2day(pklfile)
             if flag:
+                print("pickling.. " + user["user_id"])
                 a = AngelOne(
                     user["user_id"], user["api_key"], user["totp"], user["password"]
                 )

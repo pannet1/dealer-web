@@ -30,13 +30,32 @@ class Monitor:
             print(e)
 
     def run(self):
-        self._update_equity_ltp()
-        for alert in self.alerts:
-            if alert["ltp"] > float(alert["above"]) or alert["ltp"] < float(alert["below"]):
-                print("send alert")
+        try:
+            self._update_equity_ltp()
+            actions = []
+            for alert in self.alerts:
+                if alert["ltp"] > float(alert["above"]) or alert["ltp"] < float(alert["below"]):
+                    # send alert
+                    print("send alert")
+                    # add a new tradingsymbol key and value to actions
+                    for action in alert["actions"]:
+                        action["tradingsymbol"] = action["name"]
+                    # add it to todo actions list
+                    actions.append(alert["actions"])
+                    # delete the added actions
+                    alert.pop("actions")
+                    __import__("time").sleep(1)
+
+            pprint(actions)
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":
-    monitor = Monitor()
-    while True:
+    try:
+        monitor = Monitor()
         monitor.run()
+        __import__("time").sleep(1)
+    except KeyboardInterrupt as k:
+        print("pressed ctrl c")
+        __import__("sys").exit()
