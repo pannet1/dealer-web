@@ -16,12 +16,10 @@ class Monitor:
         df = self._tkn_fm_positions()
         if df is not None:
             self.symbol_token = df.dropna(subset=["token"]).set_index("tradingsymbol")["token"].to_dict()
-            token_list = [
-                {
+            token_list = {
                     "exchangeType": 2,
-                    "tokens": list(self.symbol_token.values()),
+                    "tokens": list(self.symbol_token.values())
                 }
-            ]
             h = _random_broker()
             kwargs = dict(
                 auth_token=h.access_token,
@@ -29,7 +27,8 @@ class Monitor:
                 client_code=h._user_id,
                 feed_token=h.obj.feed_token,
             )
-            self.ws = Wsocket(kwargs, token=token_list)
+            self.ws = Wsocket(kwargs=kwargs, token=token_list)
+            self.ws.run()
         
 
     def _tkn_fm_positions(self):
@@ -39,12 +38,15 @@ class Monitor:
             return None
 
         df = pd.DataFrame(data=data, columns=columns)
-        df["token"] == None
-        df["netqty"] == df["netqty"].astype(int)
+        df["token"] = None
+        df["netqty"] = df["netqty"].astype(int)
 
         # condtions
         mask = (df["exchange"] == "NFO") & (df["netqty"] < 0 )
-        df.loc[mask, "token"] = df.loc[mask, "tradingsymbol"].apply(get_tkn_fm_sym)
+        df.loc[mask, "token"] = df.loc[mask].apply(
+            lambda row: get_tkn_fm_sym(row["tradingsymbol"], "NFO"),
+            axis=1
+        )
         return df
         
 
@@ -88,13 +90,13 @@ class Monitor:
                 if alert["ltp"] > float(alert["above"]):
                     actions += self._process_alert_actions(alert, "above")
                     __import__("time").sleep(1)
-
                 elif alert["ltp"] < float(alert["below"]):
                     # send alert
                     actions += self._process_alert_actions(alert, "below")
                     __import__("time").sleep(1)
             pprint(actions)
-            print(self.ws.ticks)
+            pprint(self.ws.ticks)
+                
         except Exception as e:
             print(e)
 

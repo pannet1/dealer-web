@@ -34,25 +34,20 @@ class Wsocket(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        print(msg)
-        new_tick = {
-            self.exch_int_str[msg["exchange_type"]]
-            + ":"
-            + msg["token"]: msg["last_traded_price"] / 100
-        }
+        new_tick = { msg["token"] : msg }
         self.ticks.update(new_tick)
 
     def on_open(self, wsapp):
-        print("on open")
+        print("ws open")
         self.is_open = True
         self.subscribe(self.token)
 
     def on_error(self, wsapp, error):
-        print(error)
+        print(f"ws {error}")
 
     def on_close(self, wsapp):
         self.is_open = False
-        print("Close")
+        print("ws close")
 
     def run(self):
         # Assign the callbacks.
@@ -90,4 +85,7 @@ if __name__ == "__main__":
         }
     wsocket = Wsocket(kwargs=kwargs, token=token)
     wsocket.run()
+    while True:
+        __import__("time").sleep(1)
+        print(wsocket.ticks)
 
