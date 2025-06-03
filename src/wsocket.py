@@ -84,7 +84,7 @@ if __name__ == "__main__":
             "tokens": ["26000", "26009"],
         }
     wsocket = Wsocket(kwargs=kwargs, token=token)
-    wsocket.run()
+    wsocket.start()
     while True:
         __import__("time").sleep(1)
         print(wsocket.ticks)

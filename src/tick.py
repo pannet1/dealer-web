@@ -1,3 +1,28 @@
-msg = {'subscription_mode': 3, 'exchange_type': 2, 'token': '137462', 'sequence_number': 44066647, 'exchange_timestamp': 1748593908000, 'last_traded_price': 1585, 'subscription_mode_val': 'SNAP_QUOTE', 'last_traded_quantity': 75, 'average_traded_price': 1737, 'volume_trade_for_the_day': 42525, 'total_buy_quantity': 31725.0, 'total_sell_quantity': 21150.0, 'open_price_of_the_day': 1900, 'high_price_of_the_day': 2100, 'low_price_of_the_day': 1460, 'closed_price': 1815, 'last_traded_timestamp': 1748593876, 'open_interest': 61050, 'open_interest_change_percentage': 4593527593361557048, 'upper_circuit_limit': 6225, 'lower_circuit_limit': 5, '52_week_high_price': 4675, '52_week_low_price': 0, 
-'best_5_buy_data': [{'flag': 1, 'quantity': 75, 'price': 1570, 'no of orders': 1}, {'flag': 1, 'quantity': 150, 'price': 1565, 'no of orders': 2}, {'flag': 1, 'quantity': 75, 'price': 1560, 'no of orders': 1}, {'flag': 1, 'quantity': 525, 'price': 1555, 'no of orders': 3}, {'flag': 1, 'quantity': 75, 'price': 1550, 'no of orders': 1}],
-'best_5_sell_data': [{'flag': 0, 'quantity': 150, 'price': 1600, 'no of orders': 2}, {'flag': 0, 'quantity': 375, 'price': 1605, 'no of orders': 1}, {'flag': 0, 'quantity': 300, 'price': 1610, 'no of orders': 1}, {'flag': 0, 'quantity': 450, 'price': 1615, 'no of orders': 2}, {'flag': 0, 'quantity': 450, 'price': 1620, 'no of orders': 2}]}
+msg = {'subscription_mode': 3, 'exchange_type': 2, 'token': '137462', 
+       'sequence_number': 44066647, 'exchange_timestamp': 1748593908000, 
+       'last_traded_price': 1585, 'subscription_mode_val': 
+       'SNAP_QUOTE', 'last_traded_quantity': 75, 
+       'average_traded_price': 1737, 
+       'volume_trade_for_the_day': 42525, 
+       'total_buy_quantity': 31725.0, 
+       'total_sell_quantity': 21150.0, 
+       'open_price_of_the_day': 1900,
+       'high_price_of_the_day': 2100, 
+       'low_price_of_the_day': 1460, 'closed_price': 1815, 
+       'last_traded_timestamp': 1748593876, 
+       'open_interest': 61050, 
+       'open_interest_change_percentage': 4593527593361557048, 
+       'upper_circuit_limit': 6225, 'lower_circuit_limit': 5, 
+       '52_week_high_price': 4675, '52_week_low_price': 0, 
+'best_5_buy_data': [
+       {'flag': 1, 'quantity': 75, 'price': 1570, 'no of orders': 1}, 
+       {'flag': 1, 'quantity': 150, 'price': 1565, 'no of orders': 2}, 
+       {'flag': 1, 'quantity': 75, 'price': 1560, 'no of orders': 1}, 
+       {'flag': 1, 'quantity': 525, 'price': 1555, 'no of orders': 3}, 
+       {'flag': 1, 'quantity': 75, 'price': 1550, 'no of orders': 1}],
+'best_5_sell_data': [
+       {'flag': 0, 'quantity': 150, 'price': 1600, 'no of orders': 2}, 
+       {'flag': 0, 'quantity': 375, 'price': 1605, 'no of orders': 1}, 
+       {'flag': 0, 'quantity': 300, 'price': 1610, 'no of orders': 1}, 
+       {'flag': 0, 'quantity': 450, 'price': 1615, 'no of orders': 2}, 
+       {'flag': 0, 'quantity': 450, 'price': 1620, 'no of orders': 2}]}
