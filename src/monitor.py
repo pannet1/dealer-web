@@ -9,6 +9,10 @@ from copy import deepcopy
 from traceback import print_exc
 from logzero import logger as logging
 
+def convert_price(price: int):
+    price = price / 100
+    price = round(price / 0.05) * 0.05
+    return str(price)
 
 class Monitor:
 
@@ -98,7 +102,7 @@ class Monitor:
             "symboltoken": row["token"],
             "transactiontype": "BUY",
             "exchange": row["exchange"],
-            "price": str(row["ask"] + 2),
+            "price": convert_price(row["bid"]),
             "triggerprice": "0",
 
             "quantity": str(abs(row["netqty"])),
