@@ -1,6 +1,7 @@
 from constants import alerts_json, futil
 from pprint import pprint
-from user import get_ltps, load_all_users, positions, _random_broker
+from user import get_ltps, load_all_users, positions, _random_broker, get_broker_by_id
+from user_helper import _order_place_by_user
 from api_helper import get_tkn_fm_sym
 import pandas as pd
 from wsocket import Wsocket
@@ -44,14 +45,13 @@ class Monitor:
                     ask=min(item["price"] for item in v["best_5_buy_data"]),
                     bid=max(item["price"] for item in v["best_5_sell_data"]),
                 )
-                print(dct)
                 flattened_ticks.append(dct)
-            flattened_ticks = [
-                ticks for ticks in flattened_ticks if ticks["tradingsymbol"] is not None
-            ]
             for ticks in flattened_ticks:
                 ask, bid = ticks["ask"], ticks["bid"]
-                ticks["is_trade"] = True if (bid - ask) / ask * 100 < 20 else False
+                if ask == 0 or bid == 0:
+                    logging.warning(f'no tick for {ticks["tradingsymbol"]}')
+                    continue
+                ticks["is_trade"] = True if ((bid - ask) / ask * 100) < 20 else False
         except Exception as e:
             logging.error(f"{e} flatten askbid")
             print_exc()
@@ -77,7 +77,6 @@ class Monitor:
                     .set_index("token")["tradingsymbol"]
                     .to_dict()
                 )
-                pprint(symbol_token)
                 token_list = {"exchangeType": 2, "tokens": list(symbol_token.values())}
                 self.symbol_token.update(symbol_token)
 
@@ -86,12 +85,30 @@ class Monitor:
                     return
 
                 flattened_df = pd.DataFrame(flattened_ticks)
+                print(flattened_ticks)
                 merged_df = pd.merge(df, flattened_df, on="tradingsymbol", how="inner")
-                print(merged_df)
         except Exception as e:
             print(f"{e} while cover")
         finally:
             return merged_df
+
+    def cover_positions(self, row):
+        params = {
+            "tradingsymbol": row["tradingsymbol"],
+            "symboltoken": row["token"],
+            "transactiontype": "BUY",
+            "exchange": row["exchange"],
+            "price": str(row["ask"] + 2),
+            "triggerprice": "0",
+
+            "quantity": str(abs(row["netqty"])),
+            "ordertype": "LIMIT",
+            "producttype": row["producttype"],
+            "variety": "NORMAL",
+            "duration": "DAY",
+        }
+        client = row["client_name"]
+        return _order_place_by_user(get_broker_by_id(client), params)
 
     def match_df_with_actions(self, df, actions):
         try:
@@ -101,12 +118,15 @@ class Monitor:
                 matching_df = df[
                     df["tradingsymbol"].str.startswith(prefix)
                     & df["tradingsymbol"].str.contains(action_item["action"])
-                    & (df["is_trade"].bool())
+                    & (df["is_trade"] == True)
                 ]
-                print(matching_df)
+                if not matching_df.empty:
+                    print(matching_df)
+                    matching_df.apply(self.cover_positions, axis=1)
 
         except Exception as e:
             logging.error(f"{e} in match df with actions")
+            print_exc()
 
     def _update_equity_ltp(self):
         try:
@@ -143,12 +163,13 @@ class Monitor:
 
             if any(actions):
                 df = self.merge_ticks_df()
-                if df and not df.empty:
+                if df is not None and not df.empty:
                     self.match_df_with_actions(df, actions)
 
             __import__("time").sleep(1)
         except Exception as e:
             print(e)
+            print_exc()
 
     def __init__(self):
         self.alerts: list = futil.read_file(alerts_json)["alerts"]
