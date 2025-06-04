@@ -6,6 +6,8 @@ import pandas as pd
 from wsocket import Wsocket
 from copy import deepcopy
 from traceback import print_exc
+from logzero import logger as logging
+
 
 class Monitor:
 
@@ -17,26 +19,25 @@ class Monitor:
         df = pd.DataFrame(data=data, columns=columns)
         df["token"] = None
         df["netqty"] = df["netqty"].astype(int)
-        mask = (df["exchange"] == "NFO") & (df["netqty"] < 0 )
+        mask = (df["exchange"] == "NFO") & (df["netqty"] < 0)
         df.loc[mask, "token"] = df.loc[mask].apply(
-            lambda row: get_tkn_fm_sym(row["tradingsymbol"], "NFO"),
-            axis=1
+            lambda row: get_tkn_fm_sym(row["tradingsymbol"], "NFO"), axis=1
         )
         return df
 
-    def _tkn_fm_alert(self ):
+    def _tkn_fm_alert(self):
         tokens = []
         for alert in self.alerts:
             alert["instrument_token"] = get_tkn_fm_sym(sym=alert["name"], exch="NSE")
-            alert["ltp"]  = 0
+            alert["ltp"] = 0
             tokens.append(alert["instrument_token"])
-        return tokens 
+        return tokens
 
     def _update_equity_ltp(self):
         try:
             resp = get_ltps("NSE", self.tokens)
             for alert in self.alerts:
-                # the value of mataches with value 
+                # the value of mataches with value
                 if alert["instrument_token"] in resp:
                     alert["ltp"] = resp[alert["instrument_token"]]
         except Exception as e:
@@ -45,12 +46,39 @@ class Monitor:
     def _process_alert_actions(self, alert, event_type):
         print(f"ltp is {event_type} for {alert['name']}")
         actions = []
-        for action in alert["actions"][:]:  # work on a shallow copy to avoid iteration issues
+        for action in alert["actions"][
+            :
+        ]:  # work on a shallow copy to avoid iteration issues
             if action["event"] == event_type:
                 action["tradingsymbol"] = alert["name"]
                 actions.append(action)
                 alert["actions"].remove(action)  # safely remove from original list
         return actions
+
+    def _flatten_askbid(self):
+        try:
+            flattened_ticks = []
+            ticks = self.ws.ticks
+            copied_ticks = deepcopy(ticks)
+            for token, v in copied_ticks.items():
+                dct = dict(
+                    tradingsymbol=self.symbol_token[token],
+                    ask=min(item["price"] for item in v["best_5_buy_data"]),
+                    bid=max(item["price"] for item in v["best_5_sell_data"]),
+                )
+                print(dct)
+                flattened_ticks.append(dct)
+            flattened_ticks = [
+                ticks for ticks in flattened_ticks if ticks["tradingsymbol"] is not None
+            ]
+            for ticks in flattened_ticks:
+                ask, bid = ticks["ask"], ticks["bid"]
+                ticks["is_trade"] = True if (bid - ask) / ask * 100 < 20 else False
+        except Exception as e:
+            logging.error(f"{e} flatten askbid")
+            print_exc()
+        finally:
+            return flattened_ticks
 
     def _split(self, tradingsymbol_to_be_split):
         if tradingsymbol_to_be_split.endswith("-EQ"):
@@ -60,56 +88,37 @@ class Monitor:
         else:
             return "STRING_IS_NOT_FOUND"
 
-    def _flatten_askbid(self)->list[any, any]:
-        try: 
-            flattened_ticks = []
-            ticks = self.ws.ticks
-            copied_ticks = deepcopy(ticks)
-            for k,v in copied_ticks.items():
-                dct = dict(
-                    tradingsymbol = next(
-                        (tradingsymbol for token, tradingsymbol in self.symbol_token.items() if token == k), 
-                        None
-                    ),
-                    ask = min(item["price"] for item in v["best_5_buy_data"] ),
-                    bid = max(item["price"] for item in v["best_5_sell_data"] )
-                )
-                flattened_ticks.append(dct)
-            flattened_ticks = [ticks for ticks in flattened_ticks if tradingsymbol is not None]
-            for ticks in flattened_ticks:
-                ask, bid = ticks["ask"], ticks["bid"]
-                ticks["is_trade"] = True if (bid-ask)/ask*100 <20 else False
-        except Exception as e:
-            print(f"{e} update option ltp")
-            print_exc()
-        finally:
-            return flattened_ticks
-
-
     def _cover(self, actions):
-        df = self._df_fm_positions()
-        
-        cp_df = df.copy()
-        # subscribe to new tokens
-        if df is not None:
-            symbol_token = df.dropna(subset=["token"]).set_index("tradingsymbol")["token"].to_dict()
-            token_list = {
-                    "exchangeType": 2,
-                    "tokens": list(symbol_token.values())
-                }
-            self.symbol_token.update(symbol_token)
+        try:
+            df = self._df_fm_positions()
+            print(df)
+            # subscribe to new tokens
+            if df is not None:
+                cp_df = df.copy()
+                symbol_token = (
+                    df.dropna(subset=["token"])
+                    .set_index("token")["tradingsymbol"]
+                    .to_dict()
+                )
+                pprint(symbol_token)
+                token_list = {"exchangeType": 2, "tokens": list(symbol_token.values())}
+                self.symbol_token.update(symbol_token)
 
-            flattened_ticks = self._flatten_askbid()
-            if not any(flattened_ticks):
-                return False
-            
-            flattened_df = pd.DataFrame(flattened_ticks)
-            merged_df = pd.merge(df, flattened_df, on="tradingsymbol", how="inner" )
-            #todo
+                flattened_ticks = self._flatten_askbid()
+                print("flattened_ticks")
+                pprint(flattened_ticks)
+                if not any(flattened_ticks):
+                    return False
 
-        for action in actions:
-            action["begins_with"] = self._split(action["tradingsymbol"])
-            
+                flattened_df = pd.DataFrame(flattened_ticks)
+                print(flattened_df)
+                merged_df = pd.merge(df, flattened_df, on="tradingsymbol", how="inner")
+                print(merged_df)
+
+            for action in actions:
+                action["begins_with"] = self._split(action["tradingsymbol"])
+        except Exception as e:
+            print(f"{e} while cover")
 
     def main(self):
         try:
@@ -121,23 +130,26 @@ class Monitor:
                     actions += self._process_alert_actions(alert, "above")
                 elif alert["ltp"] < float(alert["below"]):
                     actions += self._process_alert_actions(alert, "below")
+
             if any(actions):
                 self._cover(actions)
+
             __import__("time").sleep(1)
         except Exception as e:
             print(e)
 
     def __init__(self):
-        self.alerts: list= futil.read_file(alerts_json)["alerts"]
+        self.alerts: list = futil.read_file(alerts_json)["alerts"]
         self.users = load_all_users()
         self.tokens = self._tkn_fm_alert()
         df = self._df_fm_positions()
         if df is not None:
-            self.symbol_token = df.dropna(subset=["token"]).set_index("tradingsymbol")["token"].to_dict()
-            token_list = {
-                    "exchangeType": 2,
-                    "tokens": list(self.symbol_token.values())
-                }
+            self.symbol_token = (
+                df.dropna(subset=["token"])
+                .set_index("token")["tradingsymbol"]
+                .to_dict()
+            )
+            token_list = {"exchangeType": 2, "tokens": list(self.symbol_token.keys())}
             h = _random_broker()
             kwargs = dict(
                 auth_token=h.access_token,
@@ -149,6 +161,7 @@ class Monitor:
             self.ws.daemon = True
             self.ws.start()
 
+
 if __name__ == "__main__":
     try:
         monitor = Monitor()
@@ -159,4 +172,3 @@ if __name__ == "__main__":
         monitor.ws.close_connection()
         monitor.ws.join()
         __import__("sys").exit()
-
