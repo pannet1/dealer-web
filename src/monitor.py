@@ -33,28 +33,6 @@ class Monitor:
             tokens.append(alert["instrument_token"])
         return tokens
 
-    def _update_equity_ltp(self):
-        try:
-            resp = get_ltps("NSE", self.tokens)
-            for alert in self.alerts:
-                # the value of mataches with value
-                if alert["instrument_token"] in resp:
-                    alert["ltp"] = resp[alert["instrument_token"]]
-        except Exception as e:
-            print(e)
-
-    def _process_alert_actions(self, alert, event_type):
-        print(f"ltp is {event_type} for {alert['name']}")
-        actions = []
-        for action in alert["actions"][
-            :
-        ]:  # work on a shallow copy to avoid iteration issues
-            if action["event"] == event_type:
-                action["tradingsymbol"] = alert["name"]
-                actions.append(action)
-                alert["actions"].remove(action)  # safely remove from original list
-        return actions
-
     def _flatten_askbid(self):
         try:
             flattened_ticks = []
@@ -88,13 +66,12 @@ class Monitor:
         else:
             return "STRING_IS_NOT_FOUND"
 
-    def _cover(self, actions):
+    def merge_ticks_df(self):
         try:
+            merged_df = None
             df = self._df_fm_positions()
-            print(df)
             # subscribe to new tokens
             if df is not None:
-                cp_df = df.copy()
                 symbol_token = (
                     df.dropna(subset=["token"])
                     .set_index("token")["tradingsymbol"]
@@ -105,20 +82,53 @@ class Monitor:
                 self.symbol_token.update(symbol_token)
 
                 flattened_ticks = self._flatten_askbid()
-                print("flattened_ticks")
-                pprint(flattened_ticks)
                 if not any(flattened_ticks):
-                    return False
+                    return
 
                 flattened_df = pd.DataFrame(flattened_ticks)
-                print(flattened_df)
                 merged_df = pd.merge(df, flattened_df, on="tradingsymbol", how="inner")
                 print(merged_df)
-
-            for action in actions:
-                action["begins_with"] = self._split(action["tradingsymbol"])
         except Exception as e:
             print(f"{e} while cover")
+        finally:
+            return merged_df
+
+    def match_df_with_actions(self, df, actions):
+        try:
+            matching_df = None
+            for action_item in actions:
+                prefix = self._split(action_item["tradingsymbol"])
+                matching_df = df[
+                    df["tradingsymbol"].str.startswith(prefix)
+                    & df["tradingsymbol"].str.contains(action_item["action"])
+                    & (df["is_trade"].bool())
+                ]
+                print(matching_df)
+
+        except Exception as e:
+            logging.error(f"{e} in match df with actions")
+
+    def _update_equity_ltp(self):
+        try:
+            resp = get_ltps("NSE", self.tokens)
+            for alert in self.alerts:
+                # the value of mataches with value
+                if alert["instrument_token"] in resp:
+                    alert["ltp"] = resp[alert["instrument_token"]]
+        except Exception as e:
+            print(e)
+
+    def _process_alert_actions(self, alert, event_type):
+        print(f"ltp is {event_type} for {alert['name']}")
+        actions = []
+        for action in alert["actions"][
+            :
+        ]:  # work on a shallow copy to avoid iteration issues
+            if action["event"] == event_type:
+                action["tradingsymbol"] = alert["name"]
+                actions.append(action)
+                alert["actions"].remove(action)  # safely remove from original list
+        return actions
 
     def main(self):
         try:
@@ -132,7 +142,9 @@ class Monitor:
                     actions += self._process_alert_actions(alert, "below")
 
             if any(actions):
-                self._cover(actions)
+                df = self.merge_ticks_df()
+                if df and not df.empty:
+                    self.match_df_with_actions(df, actions)
 
             __import__("time").sleep(1)
         except Exception as e:
