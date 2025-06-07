@@ -10,7 +10,7 @@ from traceback import print_exc
 from logzero import logger as logging
 
 
-def convert_price(price: int):
+def convert_price(price: float):
     price = price / 100
     price = round(price / 0.05) * 0.05
     return str(price)
@@ -126,13 +126,14 @@ class Monitor:
 
     def _process_alert_actions(self, alert, event_type: str):
         # todo
-        print(f"ltp is {event_type} for {alert['name']}")
-        actions = []
-        for action in alert["actions"]:
-            if action["event"] == event_type:
-                action["tradingsymbol"] = alert["name"]
-                actions.append(action)
-        return actions
+        if any(alert["actions"]):
+            print(f"ltp is {event_type} for {alert['name']}")
+            for action in alert["actions"]:
+                if action["event"] == event_type:
+                    action["tradingsymbol"] = alert["name"]
+            return alert["actions"]
+        else:
+            return []
 
     def option_from_action(self, action, df):
         """
@@ -180,7 +181,7 @@ class Monitor:
 
                     # delete
                     if any(action_dict):
-                        action_dicts.append(action_dict)
+                        action_dicts += action_dict
                         self.alerts.remove(alert)
                 """
                 if any(actions):
