@@ -9,25 +9,34 @@ from copy import deepcopy
 from traceback import print_exc
 from logzero import logger as logging
 
+
 def convert_price(price: int):
     price = price / 100
     price = round(price / 0.05) * 0.05
     return str(price)
 
 
+def split(tradingsymbol_to_be_split):
+    if tradingsymbol_to_be_split.endswith("-EQ"):
+        return tradingsymbol_to_be_split[:-3]
+    elif tradingsymbol_to_be_split.endswith(" 50"):
+        return tradingsymbol_to_be_split[:-3]
+    else:
+        return "STRING_IS_NOT_FOUND"
+
 
 class Monitor:
 
-    def _tkn_fm_alert(self)->list:
+    def _tkn_fm_alert(self) -> list:
         tokens = []
         for alert in self.alerts:
-            #mutate
+            # mutate
             alert["instrument_token"] = get_tkn_fm_sym(sym=alert["name"], exch="NSE")
             alert["ltp"] = None
             tokens.append(alert["instrument_token"])
         return tokens
 
-    def _df_fm_positions(self)->pd.DataFrame():
+    def _df_fm_positions(self) -> pd.DataFrame():
         df = pd.DataFrame()
         while df.empty:
             logging.info("trying to get positions")
@@ -49,12 +58,9 @@ class Monitor:
         self.equity_tokens: list = self._tkn_fm_alert()
         df = self._df_fm_positions()
         self.symbol_token = (
-            df.dropna(subset=["token"])
-            .set_index("token")["tradingsymbol"]
-            .to_dict()
+            df.dropna(subset=["token"]).set_index("token")["tradingsymbol"].to_dict()
         )
-        token_list = {"exchangeType": 2, 
-                      "tokens": list(self.symbol_token.keys())}
+        token_list = {"exchangeType": 2, "tokens": list(self.symbol_token.keys())}
         h = _random_broker()
         kwargs = dict(
             auth_token=h.access_token,
@@ -65,7 +71,6 @@ class Monitor:
         self.ws = Wsocket(kwargs=kwargs, token=token_list)
         self.ws.daemon = True
         self.ws.start()
-
 
     def _flatten_askbid(self):
         try:
@@ -100,7 +105,7 @@ class Monitor:
             "exchange": row["exchange"],
             "price": convert_price(row["bid"]),
             "triggerprice": "0",
-            #update
+            # update
             "quantity": str(abs(row["netqty"])),
             "ordertype": "LIMIT",
             "producttype": row["producttype"],
@@ -114,7 +119,7 @@ class Monitor:
         try:
             resp = get_ltps("NSE", self.equity_tokens)
             for alert in self.alerts:
-                    alert["ltp"] = resp.get(alert["instrument_token"], None)
+                alert["ltp"] = resp.get(alert["instrument_token"], None)
         except Exception as e:
             logging.error(f"{e} in get equity ltp")
             print_exc()
@@ -122,6 +127,7 @@ class Monitor:
     """
         to be removed 
     """
+
     def merge_ticks_df(self):
         try:
             merged_df = None
@@ -147,19 +153,11 @@ class Monitor:
         finally:
             return merged_df
 
-    def _split(self, tradingsymbol_to_be_split):
-        if tradingsymbol_to_be_split.endswith("-EQ"):
-            return tradingsymbol_to_be_split[:-3]
-        elif tradingsymbol_to_be_split.endswith(" 50"):
-            return tradingsymbol_to_be_split[:-3]
-        else:
-            return "STRING_IS_NOT_FOUND"
-
     def match_df_with_actions(self, df, actions):
         try:
             matching_df = None
             for action_item in actions:
-                prefix = self._split(action_item["tradingsymbol"])
+                prefix = split(action_item["tradingsymbol"])
                 matching_df = df[
                     df["tradingsymbol"].str.startswith(prefix)
                     & df["tradingsymbol"].str.contains(action_item["action"])
@@ -171,6 +169,7 @@ class Monitor:
         except Exception as e:
             logging.error(f"{e} in match df with actions")
             print_exc()
+
     """
         end of removed
     """
@@ -187,15 +186,28 @@ class Monitor:
                 alert["actions"].remove(action)  # safely remove from original list
         return actions
 
-    def find_token_from_action(self, action, positions):
-        lst = []
-        return lst
+    def option_from_action(self, action, df):
+        option_tokens = []
+        pfx = split(action["tradingsymbol"])
+        ce_or_pe = action["action"]
+        for _, position in df.iterrows():
+            tsym = position["tradingsymbol"]
+            if tsym.startswith(pfx) and ce_or_pe in tsym:
+                option_tokens.append(tsym)
+        return option_tokens
 
-    def is_not_subscribed(self, tokens, askbid):
-        return True
+    def is_subscribed(self, option_symbols, askbid):
+        subscribed = [item["tradingsymbol"] for item in askbid]
+        return all(option in option_symbols for option in subscribed)
 
-    def subscribe_till_ltp(self, tokens):
-        ...
+    def subscribe_till_ltp(self, list_of_tradingsymbols):
+        symbol_token = {
+            get_tkn_fm_sym(tradingsymbol, "NFO"): tradingsymbol
+            for tradingsymbol in list_of_tradingsymbols
+        }
+        token_list = {"exchangeType": 2, "tokens": list(symbol_token.keys())}
+        self.ws.subscribe(token_list)
+        self.symbol_token.update(symbol_token)
 
     def main(self):
         try:
@@ -203,7 +215,6 @@ class Monitor:
             while True:
                 action_dicts = []
                 self.get_equity_ltp()
-                pprint(self.alerts)
                 for alert in self.alerts:
                     if alert["ltp"] > float(alert["above"]):
                         action_dicts += self._process_alert_actions(alert, "above")
@@ -217,24 +228,20 @@ class Monitor:
                         self.match_df_with_actions(df, actions)
                 """
 
-                positions = positions()
+                df = self._df_fm_positions()
                 # create action object
                 for action in action_dicts:
-                    lst = self.find_token_from_action(action, positions)
-                    if self.is_not_subscribed(lst, self._flatten_askbid):
+                    lst = self.option_from_action(action, df)
+                    if self.is_subscribed(lst, self._flatten_askbid()):
                         self.subscribe_till_ltp(lst)
                     action_objects.append(Action(action))
 
                 # delete
-                action_objects = [obj
-                    for obj in action_objects
-                    if obj.enabled
-                ]
+                action_objects = [obj for obj in action_objects if obj.enabled]
 
                 # run
                 for obj in action_objects:
-                    obj.run(positions=positions, 
-                            askbid=self._flatten_askbid)
+                    obj.run(df=df, askbid=self._flatten_askbid())
                 __import__("time").sleep(1)
 
         except KeyboardInterrupt:
@@ -244,21 +251,25 @@ class Monitor:
             print(f"{e} in main loop")
             print_exc()
 
-class Action:
 
-    def __init__(action):
+class Action:
+    """
+    {'action': 'PE', 'event': 'below', 'id': 2, 'tradingsymbol': 'BHARATFORG-EQ'}
+    """
+
+    def __init__(self, action):
         self.enabled = True
-        pprint(action)
-    
-    def run(positions, askbid):
-        pprint(positions)
-        pprint(askbid)
+        self.begins = split(action["tradingsymbol"])
+        self.ends = action["action"]
+
+    def run(self, df, askbid): ...
+
 
 if __name__ == "__main__":
     try:
         monitor = Monitor()
         monitor.main()
-    except KeyboardInterrupt as k:
+    except KeyboardInterrupt:
         print("pressed ctrl c")
         monitor.ws.close_connection()
         monitor.ws.join()
