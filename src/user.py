@@ -164,6 +164,7 @@ def margins(args=None):
             td += td1
     return mh, md, th, td
 
+
 def get_ltps(exch, lst_of_tokens: list) -> dict:
     try:
         brkr = _random_broker()
@@ -186,7 +187,8 @@ def get_ltps(exch, lst_of_tokens: list) -> dict:
         print(f"Error while getting LTP: {e}")
     finally:
         return new_dct
-        
+
+
 def get_ltp(exch, sym, tkn):
     brkr = _random_broker()
     print(exch, sym, tkn)

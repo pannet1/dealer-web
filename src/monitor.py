@@ -88,32 +88,17 @@ class Monitor:
             for ticks in flattened_ticks:
                 ask, bid = ticks["ask"], ticks["bid"]
                 if ask == 0 or bid == 0:
+                    ticks["is_trade"] = False
                     logging.warning(f'no tick for {ticks["tradingsymbol"]}')
-                    continue
-                ticks["is_trade"] = True if ((bid - ask) / ask * 100) < 20 else False
+                else:
+                    ticks["is_trade"] = (
+                        True if ((bid - ask) / ask * 100) < 20 else False
+                    )
         except Exception as e:
             logging.error(f"{e} flatten askbid")
             print_exc()
         finally:
             return flattened_ticks
-
-    def cover_positions(self, row):
-        params = {
-            "tradingsymbol": row["tradingsymbol"],
-            "symboltoken": row["token"],
-            "transactiontype": "BUY",
-            "exchange": row["exchange"],
-            "price": convert_price(row["bid"]),
-            "triggerprice": "0",
-            # update
-            "quantity": str(abs(row["netqty"])),
-            "ordertype": "LIMIT",
-            "producttype": row["producttype"],
-            "variety": "NORMAL",
-            "duration": "DAY",
-        }
-        client = row["client_name"]
-        return _order_place_by_user(get_broker_by_id(client), params)
 
     def get_equity_ltp(self):
         try:
@@ -126,14 +111,13 @@ class Monitor:
 
     def _process_alert_actions(self, alert, event_type: str):
         # todo
-        if any(alert["actions"]):
-            print(f"ltp is {event_type} for {alert['name']}")
-            for action in alert["actions"]:
-                if action["event"] == event_type:
-                    action["tradingsymbol"] = alert["name"]
-            return alert["actions"]
-        else:
-            return []
+        event_on_alert = []
+        print(f"ltp is {event_type} for {alert['name']}")
+        for action in alert["actions"]:
+            if action["event"] == event_type:
+                action["tradingsymbol"] = alert["name"]
+                event_on_alert.append(action)
+        return event_on_alert
 
     def option_from_action(self, action, df):
         """
@@ -171,18 +155,15 @@ class Monitor:
         try:
             action_objects = []
             while True:
-                action_dicts = []
                 self.get_equity_ltp()
                 for alert in self.alerts[:]:
+                    action_dicts = []
                     if alert["ltp"] > float(alert["above"]):
-                        action_dict = self._process_alert_actions(alert, "above")
+                        action_dicts = self._process_alert_actions(alert, "above")
                     elif alert["ltp"] < float(alert["below"]):
-                        action_dict = self._process_alert_actions(alert, "below")
+                        action_dicts = self._process_alert_actions(alert, "below")
 
                     # delete
-                    if any(action_dict):
-                        action_dicts += action_dict
-                        self.alerts.remove(alert)
                 """
                 if any(actions):
                     df = self.merge_ticks_df()
@@ -194,6 +175,8 @@ class Monitor:
                 # create action object
                 token_symbols = []
                 for action_dict in action_dicts:
+                    pprint(action_dict)
+                    __import__("time").sleep(10)
                     token_symbols = self.option_from_action(action_dict, df)
                     if any(token_symbols) and not self.is_subscribed(
                         token_symbols, self._flatten_askbid()
@@ -211,7 +194,22 @@ class Monitor:
 
                 # run
                 for obj in action_objects:
-                    obj.run(df=df, askbid=self._flatten_askbid())
+                    askbid = self._flatten_askbid()
+                    pprint(askbid)
+                    askbid = [
+                        item
+                        for item in askbid
+                        if item["is_trade"] == True
+                        and item["tradingsymbol"] == obj.tradingsymbol
+                    ]
+                    if any(askbid):
+                        flattened_df = pd.DataFrame(askbid)
+                        merged_df = pd.merge(
+                            df, flattened_df, on="tradingsymbol", how="inner"
+                        )
+                        obj.run(df=merged_df)
+                    else:
+                        print(f"{obj.tradingsymbol} askbid is empty")
                 __import__("time").sleep(1)
 
         except KeyboardInterrupt:
@@ -223,15 +221,34 @@ class Monitor:
 
 
 class Action:
-    """
-    {'action': 'PE', 'event': 'below', 'id': 2, 'tradingsymbol': 'BHARATFORG-EQ'}
-    """
-
     def __init__(self, tradingsymbol):
         self.enabled = True
         self.tradingsymbol = tradingsymbol
+        print("from alert oject", tradingsymbol)
 
-    def run(self, df, askbid): ...
+    def run(self, df):
+        if not df.empty:
+            for _, row in df.iterrows():
+                resp = self.cover_positions(row)
+                print(f"{resp=} received while covering position")
+
+    def cover_positions(self, row):
+        params = {
+            "tradingsymbol": row["tradingsymbol"],
+            "symboltoken": row["token"],
+            "transactiontype": "BUY",
+            "exchange": row["exchange"],
+            "price": convert_price(row["bid"]),
+            "triggerprice": "0",
+            # update
+            "quantity": str(abs(row["netqty"])),
+            "ordertype": "LIMIT",
+            "producttype": row["producttype"],
+            "variety": "NORMAL",
+            "duration": "DAY",
+        }
+        client = row["client_name"]
+        return _order_place_by_user(get_broker_by_id(client), params)
 
 
 if __name__ == "__main__":
@@ -242,4 +259,4 @@ if __name__ == "__main__":
         print("pressed ctrl c")
         monitor.ws.close_connection()
         monitor.ws.join()
-        __import__("sys").exit()
+__import__("sys").exit()

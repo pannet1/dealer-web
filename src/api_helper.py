@@ -149,10 +149,6 @@ def get_tkn_fm_sym(sym, exch):
     with open(dumpfile, "r") as objfile:
         data = json.load(objfile)
         for i in data:
-            if i["symbol"] == sym:
-                print("sym match")
-                print(i)
-                print(f"{sym=}{exch=}")
             if (i["symbol"] == sym) and (i["exch_seg"] == exch):
                 return i["token"]
     return token
