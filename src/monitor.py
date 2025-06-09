@@ -8,6 +8,7 @@ from wsocket import Wsocket
 from copy import deepcopy
 from traceback import print_exc
 from logzero import logger as logging
+from typing import Any
 
 
 def convert_price(price: float):
@@ -39,7 +40,6 @@ class Monitor:
     def _df_fm_positions(self) -> pd.DataFrame():
         df = pd.DataFrame()
         while df.empty:
-            logging.info("trying to get positions")
             _, _, columns, data = positions()
             if data is not None and any(data):
                 df = pd.DataFrame(data=data, columns=columns)
@@ -109,17 +109,7 @@ class Monitor:
             logging.error(f"{e} in get equity ltp")
             print_exc()
 
-    def _process_alert_actions(self, alert, event_type: str):
-        # todo
-        event_on_alert = []
-        print(f"ltp is {event_type} for {alert['name']}")
-        for action in alert["actions"]:
-            if action["event"] == event_type:
-                action["tradingsymbol"] = alert["name"]
-                event_on_alert.append(action)
-        return event_on_alert
-
-    def option_from_action(self, action, df):
+    def tokens_from_positions(self, action, df) -> dict[Any, Any]:
         """
         finds relevant option symbol and token
         from positions df
@@ -140,62 +130,60 @@ class Monitor:
         finally:
             return token_symbols
 
-    def is_subscribed(self, token_symbols, askbid):
+    def subscribe_till_ltp(self, token_symbols, askbid):
         position_symbol = list(token_symbols.values())
         subscribed = [item["tradingsymbol"] for item in askbid]
-        # true if all symbols are  found in askbid
-        return all(option in position_symbol for option in subscribed)
+        if not all(option in position_symbol for option in subscribed):
+            self.token_symbols.update(token_symbols)
+            print(f"{self.token_symbols} \n subscribed")
+            token_list = {"exchangeType": 2, "tokens": list(token_symbols.keys())}
+            self.ws.subscribe(token_list)
 
-    def subscribe_till_ltp(self, token_symbols):
-        self.token_symbols.update(token_symbols)
-        token_list = {"exchangeType": 2, "tokens": list(token_symbols.keys())}
-        self.ws.subscribe(token_list)
+    def find_actions(self, alert, event_type: str):
+        # todo
+        event_on_alert = []
+        logging.info(f"ltp is {event_type} for {alert['name']}")
+        # create a shallow copy
+        for action in alert["actions"][:]:
+            if action["event"] == event_type:
+                action["tradingsymbol"] = alert["name"]
+                event_on_alert.append(action)
+                # safely remove from original
+                alert["actions"].remove(action)
+        return event_on_alert
 
     def main(self):
         try:
             action_objects = []
             while True:
                 self.get_equity_ltp()
-                for alert in self.alerts[:]:
+                for alert in self.alerts:
                     action_dicts = []
                     if alert["ltp"] > float(alert["above"]):
-                        action_dicts = self._process_alert_actions(alert, "above")
+                        action_dicts = self.find_actions(alert, "above")
                     elif alert["ltp"] < float(alert["below"]):
-                        action_dicts = self._process_alert_actions(alert, "below")
-
-                    # delete
-                """
-                if any(actions):
-                    df = self.merge_ticks_df()
-                    if df is not None and not df.empty:
-                        self.match_df_with_actions(df, actions)
-                """
+                        action_dicts = self.find_actions(alert, "below")
 
                 df = self._df_fm_positions()
-                # create action object
+                # find and delete actions
                 token_symbols = []
                 for action_dict in action_dicts:
                     pprint(action_dict)
-                    __import__("time").sleep(10)
-                    token_symbols = self.option_from_action(action_dict, df)
-                    if any(token_symbols) and not self.is_subscribed(
-                        token_symbols, self._flatten_askbid()
-                    ):
-                        self.subscribe_till_ltp(token_symbols)
+                    token_symbols = self.tokens_from_positions(action_dict, df)
+                    self.subscribe_till_ltp(token_symbols, self._flatten_askbid())
 
-                # create
+                # create ACTION object
                 if any(token_symbols):
                     tradingsymbols = list(token_symbols.values())
                     for tradingsymbol in tradingsymbols:
                         action_objects.append(Action(tradingsymbol))
 
-                # delete
+                # delete ACTION object
                 action_objects = [obj for obj in action_objects if obj.enabled]
 
                 # run
                 for obj in action_objects:
                     askbid = self._flatten_askbid()
-                    pprint(askbid)
                     askbid = [
                         item
                         for item in askbid
@@ -209,7 +197,7 @@ class Monitor:
                         )
                         obj.run(df=merged_df)
                     else:
-                        print(f"{obj.tradingsymbol} askbid is empty")
+                        logging.warning(f"ask/bid is wide {obj.tradingsymbol} ")
                 __import__("time").sleep(1)
 
         except KeyboardInterrupt:

@@ -34,7 +34,7 @@ class Wsocket(threading.Thread):
         threading.Thread.__init__(self)
 
     def on_data(self, wsapp, msg):
-        new_tick = { msg["token"] : msg }
+        new_tick = {msg["token"]: msg}
         self.ticks.update(new_tick)
 
     def on_open(self, wsapp):
@@ -62,7 +62,6 @@ class Wsocket(threading.Thread):
 
     def subscribe(self, token: Dict[str, Any]):
         self.token_list.append(token)
-        print(self.token_list)
         self.sws.subscribe(correlation_id="spread", mode=3, token_list=self.token_list)
 
     def unsubscribe(self, lst_token, correlation_id="spread", mode=1):
@@ -80,12 +79,11 @@ if __name__ == "__main__":
         feed_token=h.obj.feed_token,
     )
     token = {
-            "exchangeType": 1,
-            "tokens": ["26000", "26009"],
-        }
+        "exchangeType": 1,
+        "tokens": ["26000", "26009"],
+    }
     wsocket = Wsocket(kwargs=kwargs, token=token)
     wsocket.start()
     while True:
         __import__("time").sleep(1)
         print(wsocket.ticks)
-
