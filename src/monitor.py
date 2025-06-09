@@ -1,4 +1,4 @@
-from constants import alerts_json, futil
+from constants import alerts_json, futil, D_SETG
 from pprint import pprint
 from user import get_ltps, load_all_users, positions, _random_broker, get_broker_by_id
 from user_helper import _order_place_by_user
@@ -9,6 +9,7 @@ from copy import deepcopy
 from traceback import print_exc
 from logzero import logger as logging
 from typing import Any
+from toolkit.telegram import Telegram
 
 
 def convert_price(price: float):
@@ -71,6 +72,7 @@ class Monitor:
         self.ws = Wsocket(kwargs=kwargs, token=token_list)
         self.ws.daemon = True
         self.ws.start()
+        self.tg = Telegram(D_SETG["telegram_api"], D_SETG["chat_id"])
 
     def _flatten_askbid(self):
         try:
