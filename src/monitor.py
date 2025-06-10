@@ -45,12 +45,11 @@ class Monitor:
             if data is not None and any(data):
                 df = pd.DataFrame(data=data, columns=columns)
             __import__("time").sleep(2)
-        df["token"] = None
         df["netqty"] = df["netqty"].astype(int)
         mask = (df["exchange"] == "NFO") & (df["netqty"] < 0)
-        df.loc[mask, "token"] = df.loc[mask].apply(
-            lambda row: get_tkn_fm_sym(row["tradingsymbol"], "NFO"), axis=1
-        )
+        df = df[mask]
+        print(df)
+        print("end of df positions")
         return df
 
     def __init__(self):
@@ -59,7 +58,9 @@ class Monitor:
         self.equity_tokens: list = self._tkn_fm_alert()
         df = self._df_fm_positions()
         self.token_symbols = (
-            df.dropna(subset=["token"]).set_index("token")["tradingsymbol"].to_dict()
+            df.dropna(subset=["symboltoken"])
+            .set_index("symboltoken")["tradingsymbol"]
+            .to_dict()
         )
         token_list = {"exchangeType": 2, "tokens": list(self.token_symbols.keys())}
         h = _random_broker()
@@ -79,9 +80,9 @@ class Monitor:
             flattened_ticks = []
             ticks = self.ws.ticks
             copied_ticks = deepcopy(ticks)
-            for token, v in copied_ticks.items():
+            for symboltoken, v in copied_ticks.items():
                 dct = dict(
-                    tradingsymbol=self.token_symbols[token],
+                    tradingsymbol=self.token_symbols[symboltoken],
                     ask=min(item["price"] for item in v["best_5_buy_data"]),
                     bid=max(item["price"] for item in v["best_5_sell_data"]),
                 )
@@ -123,9 +124,8 @@ class Monitor:
             for _, position in df.iterrows():
                 tsym = position["tradingsymbol"]
                 if tsym.startswith(pfx) and ce_or_pe in tsym:
-                    token = get_tkn_fm_sym(tsym, "NFO")
-                    token = str(token)
-                    token_symbols[token] = tsym
+                    symboltoken = position["symboltoken"]
+                    token_symbols[symboltoken] = tsym
         except Exception as e:
             logging.info(f"{e} in option from action")
             print_exc()
@@ -142,7 +142,7 @@ class Monitor:
             self.ws.subscribe(token_list)
 
     def find_actions(self, alert, event_type: str):
-        # todo
+        # find and delete actions
         event_on_alert = []
         logging.info(f"ltp is {event_type} for {alert['name']}")
         # create a shallow copy
@@ -157,49 +157,61 @@ class Monitor:
     def main(self):
         try:
             action_objects = []
+            # get positions
+            df = self._df_fm_positions()
             while True:
+                # get stock prices repeatedly
                 self.get_equity_ltp()
+                # alerts are also fetched once during startup, but tried repeatedly
+                # on the stock prices
                 for alert in self.alerts:
                     action_dicts = []
                     if alert["ltp"] > float(alert["above"]):
+                        self.tg.send_msg(
+                            f'Alert: {alert["ltp"]} is above {alert["above"]} for {alert["name"]}'
+                        )
                         action_dicts = self.find_actions(alert, "above")
                     elif alert["ltp"] < float(alert["below"]):
+                        self.tg.send_msg(
+                            f'Alert: {alert["ltp"]} is below {alert["below"]} for {alert["name"]}'
+                        )
                         action_dicts = self.find_actions(alert, "below")
 
-                df = self._df_fm_positions()
-                # find and delete actions
-                token_symbols = []
-                for action_dict in action_dicts:
-                    pprint(action_dict)
-                    token_symbols = self.tokens_from_positions(action_dict, df)
-                    self.subscribe_till_ltp(token_symbols, self._flatten_askbid())
+                    # subscribe to new tradingsymbols if triggered by actions
+                    token_symbols = []
+                    for action_dict in action_dicts:
+                        pprint(action_dict)
+                        token_symbols = self.tokens_from_positions(action_dict, df)
+                        self.subscribe_till_ltp(token_symbols, self._flatten_askbid())
 
-                # create ACTION object
-                if any(token_symbols):
-                    tradingsymbols = list(token_symbols.values())
-                    for tradingsymbol in tradingsymbols:
-                        action_objects.append(Action(tradingsymbol))
+                    # create ACTION object
+                    if any(token_symbols):
+                        tradingsymbols = list(token_symbols.values())
+                        for tradingsymbol in tradingsymbols:
+                            action_objects.append(Action(tradingsymbol))
 
-                # delete ACTION object
-                action_objects = [obj for obj in action_objects if obj.enabled]
+                    # delete ACTION object
+                    action_objects = [obj for obj in action_objects if obj.enabled]
 
-                # run
-                for obj in action_objects:
-                    askbid = self._flatten_askbid()
-                    askbid = [
-                        item
-                        for item in askbid
-                        if item["is_trade"] == True
-                        and item["tradingsymbol"] == obj.tradingsymbol
-                    ]
-                    if any(askbid):
-                        flattened_df = pd.DataFrame(askbid)
-                        merged_df = pd.merge(
-                            df, flattened_df, on="tradingsymbol", how="inner"
-                        )
-                        obj.run(df=merged_df)
-                    else:
-                        logging.warning(f"ask/bid is wide {obj.tradingsymbol} ")
+                    # run
+                    for obj in action_objects:
+                        askbid = self._flatten_askbid()
+                        askbid = [
+                            item
+                            for item in askbid
+                            if item["is_trade"] == True
+                            and item["tradingsymbol"] == obj.tradingsymbol
+                        ]
+                        if any(askbid):
+                            flattened_df = pd.DataFrame(askbid)
+                            print(flattened_df)
+                            merged_df = pd.merge(
+                                df, flattened_df, on="tradingsymbol", how="inner"
+                            )
+                            print(merged_df)
+                            obj.run(df=merged_df)
+                        else:
+                            logging.warning(f"ask/bid is wide {obj.tradingsymbol} ")
                 __import__("time").sleep(1)
 
         except KeyboardInterrupt:
@@ -217,15 +229,19 @@ class Action:
         print("from alert oject", tradingsymbol)
 
     def run(self, df):
+        resp = None
         if not df.empty:
             for _, row in df.iterrows():
-                resp = self.cover_positions(row)
-                print(f"{resp=} received while covering position")
+                _, _, _, resp = self.cover_positions(row)
+                logging.debug(f"{resp=} received while covering position")
+                if resp and isinstance(resp, list) and any(resp):
+                    logging.debug(f"disabling {self.tradingsymbol}")
+                    self.enabled = False
 
     def cover_positions(self, row):
         params = {
             "tradingsymbol": row["tradingsymbol"],
-            "symboltoken": row["token"],
+            "symboltoken": row["symboltoken"],
             "transactiontype": "BUY",
             "exchange": row["exchange"],
             "price": convert_price(row["bid"]),
@@ -238,6 +254,9 @@ class Action:
             "duration": "DAY",
         }
         client = row["client_name"]
+        logging.info(f"before placing order {params} for {client}")
+        print(f"placing order for {client=}")
+        pprint(params)
         return _order_place_by_user(get_broker_by_id(client), params)
 
 

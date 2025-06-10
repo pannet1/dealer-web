@@ -128,6 +128,7 @@ def positions():
             "ltp",
             "avgnetprice",
             "netprice",
+            "symboltoken",
         ]
         th1, td1 = lst_to_tbl(lst, args, client_name=a.client_name)
         if "message" in th1:
