@@ -10,9 +10,12 @@ from traceback import print_exc
 from logzero import logger as logging
 from typing import Any
 from toolkit.telegram import Telegram
+from toolkit.kokoo import is_time_past
 
 
 def convert_price(price: float):
+    buff = price * 2 / 100
+    price = price + buff
     price = price / 100
     price = round(price / 0.05) * 0.05
     return str(price)
@@ -159,7 +162,7 @@ class Monitor:
             action_objects = []
             # get positions
             df = self._df_fm_positions()
-            while True:
+            while not is_time_past("15:29:00"):
                 # get stock prices repeatedly
                 self.get_equity_ltp()
                 # alerts are also fetched once during startup, but tried repeatedly
@@ -199,26 +202,26 @@ class Monitor:
                         askbid = [
                             item
                             for item in askbid
-                            if item["is_trade"] == True
+                            if item["is_trade"]  # == True
                             and item["tradingsymbol"] == obj.tradingsymbol
                         ]
                         if any(askbid):
                             flattened_df = pd.DataFrame(askbid)
-                            print(flattened_df)
                             merged_df = pd.merge(
                                 df, flattened_df, on="tradingsymbol", how="inner"
                             )
-                            print(merged_df)
                             obj.run(df=merged_df)
                         else:
                             logging.warning(f"ask/bid is wide {obj.tradingsymbol} ")
                 __import__("time").sleep(1)
+            else:
+                __import__("os")._exit(1)
 
         except KeyboardInterrupt:
             __import__("sys").exit(1)
             print("interruped via keyboard")
         except Exception as e:
-            print(f"{e} in main loop")
+            logging.error(f"{e} in main loop")
             print_exc()
 
 
@@ -226,7 +229,6 @@ class Action:
     def __init__(self, tradingsymbol):
         self.enabled = True
         self.tradingsymbol = tradingsymbol
-        print("from alert oject", tradingsymbol)
 
     def run(self, df):
         resp = None
@@ -244,7 +246,7 @@ class Action:
             "symboltoken": row["symboltoken"],
             "transactiontype": "BUY",
             "exchange": row["exchange"],
-            "price": convert_price(row["bid"]),
+            "price": convert_price(row["ask"]),
             "triggerprice": "0",
             # update
             "quantity": str(abs(row["netqty"])),
@@ -255,8 +257,6 @@ class Action:
         }
         client = row["client_name"]
         logging.info(f"before placing order {params} for {client}")
-        print(f"placing order for {client=}")
-        pprint(params)
         return _order_place_by_user(get_broker_by_id(client), params)
 
 
