@@ -84,22 +84,30 @@ class Monitor:
             ticks = self.ws.ticks
             copied_ticks = deepcopy(ticks)
             for symboltoken, v in copied_ticks.items():
+                tradingsymbol = self.token_symbols[symboltoken]
+                buy_prices = [item['price'] for item in v["best_5_buy_data"]]
+                sell_prices = [item['price'] for item in v["best_5_sell_data"]]
                 dct = dict(
-                    tradingsymbol=self.token_symbols[symboltoken],
-                    ask=min(item["price"] for item in v["best_5_buy_data"]),
-                    bid=max(item["price"] for item in v["best_5_sell_data"]),
+                    tradingsymbol=tradingsymbol,
+                    ask=min(buy_prices),
+                    bid=max(sell_prices),
                 )
+                ask = f"ask: {dct['ask']} min of buy prices {buy_prices}"
+                bid = f"bid: {dct['bid']} max of sel prices {sell_prices}"
+                msg = f"{tradingsymbol} \n {ask} \n {bid}"
+                logging.debug(msg)
                 flattened_ticks.append(dct)
 
             for ticks in flattened_ticks:
                 ask, bid = ticks["ask"], ticks["bid"]
                 if ask == 0 or bid == 0:
                     ticks["is_trade"] = False
-                    logging.warning(f'no tick for {ticks["tradingsymbol"]}')
+                    logging.warning(f'{ticks["tradingsymbol"]}: NO TICKS')
                 else:
                     ticks["is_trade"] = (
-                        True if ((bid - ask) / ask * 100) < 20 else False
+                        True if ((bid - ask) / ask * 100) < D_SETG["spread_perc"] else False
                     )
+                    logging.debug(f"{ticks['tradingsymbol']}: (bid-ask: {bid-ask} / ask: {ask} * 100) < {D_SETG['spread_perc']} = {ticks['is_trade']} ")
         except Exception as e:
             logging.error(f"{e} flatten askbid")
             print_exc()
@@ -211,8 +219,10 @@ class Monitor:
                                 df, flattened_df, on="tradingsymbol", how="inner"
                             )
                             obj.run(df=merged_df)
+                        """
                         else:
-                            logging.warning(f"ask/bid is wide {obj.tradingsymbol} ")
+                            logging.warning(f"{obj.tradingsymbol}: is not tradeable")
+                        """
                 __import__("time").sleep(1)
             else:
                 __import__("os")._exit(1)
