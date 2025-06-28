@@ -38,9 +38,10 @@ async def add_alert(
     name: str = Form(...),
     above: str = Form(...),
     below: str = Form(...),
+    price: str = Form(...),
     db: JsonDB = Depends(get_jsondb),
 ):
-    new_alert = db.add_alert(name, above, below)
+    new_alert = db.add_alert(name, above, below, price)
     return RedirectResponse("/alerts", status_code=302)
 
 

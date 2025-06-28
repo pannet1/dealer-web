@@ -24,10 +24,7 @@ def convert_price(price: float):
 def split(tradingsymbol_to_be_split):
     if tradingsymbol_to_be_split.endswith("-EQ"):
         return tradingsymbol_to_be_split[:-3]
-    elif tradingsymbol_to_be_split.endswith(" 50"):
-        return tradingsymbol_to_be_split[:-3]
-    else:
-        return "STRING_IS_NOT_FOUND"
+    return tradingsymbol_to_be_split
 
 
 class Monitor:
@@ -85,8 +82,8 @@ class Monitor:
             copied_ticks = deepcopy(ticks)
             for symboltoken, v in copied_ticks.items():
                 tradingsymbol = self.token_symbols[symboltoken]
-                buy_prices = [item['price'] for item in v["best_5_buy_data"]]
-                sell_prices = [item['price'] for item in v["best_5_sell_data"]]
+                buy_prices = [item["price"] for item in v["best_5_buy_data"]]
+                sell_prices = [item["price"] for item in v["best_5_sell_data"]]
                 dct = dict(
                     tradingsymbol=tradingsymbol,
                     ask=min(buy_prices),
@@ -105,9 +102,13 @@ class Monitor:
                     logging.warning(f'{ticks["tradingsymbol"]}: NO TICKS')
                 else:
                     ticks["is_trade"] = (
-                        True if ((bid - ask) / ask * 100) < D_SETG["spread_perc"] else False
+                        True
+                        if ((bid - ask) / ask * 100) < D_SETG["spread_perc"]
+                        else False
                     )
-                    logging.debug(f"{ticks['tradingsymbol']}: (bid-ask: {bid-ask} / ask: {ask} * 100) < {D_SETG['spread_perc']} = {ticks['is_trade']} ")
+                    logging.debug(
+                        f"{ticks['tradingsymbol']}: (bid-ask: {bid-ask} / ask: {ask} * 100) < {D_SETG['spread_perc']} = {ticks['is_trade']} "
+                    )
         except Exception as e:
             logging.error(f"{e} flatten askbid")
             print_exc()
