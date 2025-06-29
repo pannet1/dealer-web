@@ -32,9 +32,8 @@ class Monitor:
     def _tkn_fm_alert(self) -> list:
         tokens = []
         for alert in self.alerts:
-            # mutate
-            alert["instrument_token"] = get_tkn_fm_sym(sym=alert["name"], exch="NSE")
-            alert["ltp"] = None
+            if not alert.get("instrument_token", None):
+                alert["instrument_token"] = get_tkn_fm_sym("NSE", alert["name"])
             tokens.append(alert["instrument_token"])
         return tokens
 

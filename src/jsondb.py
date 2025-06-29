@@ -1,6 +1,9 @@
 import json
 from typing import Optional
 from toolkit.fileutils import Fileutils
+from api_helper import get_tkn_fm_sym
+from user import get_ltps
+from logzero import logger as logging
 
 
 class JsonDB:
@@ -17,7 +20,7 @@ class JsonDB:
             else:
                 self.data = self.fileutils.json_fm_file(self.path)
         except Exception as e:
-            print(f"while loading {e}")
+            logging.error(f"while loading {e}")
         finally:
             self.enumerate_ids()
 
@@ -27,13 +30,25 @@ class JsonDB:
             with open(self.path, "w") as f:
                 json.dump(self.data, f, indent=2)
         except Exception as e:
-            print(f"while saving {e}")
+            logging.error(f"while saving {e}")
 
     def enumerate_ids(self):
-        for i, alert in enumerate(self.data["alerts"], 1):
-            alert["id"] = i
-            for j, action in enumerate(alert.get("actions", []), 1):
-                action["id"] = j
+        try:
+            for i, alert in enumerate(self.data["alerts"], 1):
+                alert["id"] = i
+                alert["instrument_token"] = get_tkn_fm_sym(
+                    sym=alert["name"], exch="NSE"
+                )
+                for j, action in enumerate(alert.get("actions", []), 1):
+                    action["id"] = j
+
+            tokens = [alert["instrument_token"] for alert in self.data["alerts"]]
+            ltps = get_ltps("NSE", tokens)
+            print("ltps")
+            for alert in self.data["alerts"]:
+                alert["ltp"] = ltps.get(alert["instrument_token"], None)
+        except Exception as e:
+            logging.error(f"jsondb: {e} error in enumerating ids")
 
     def get_alerts(self):
         return self.data["alerts"]
@@ -48,7 +63,7 @@ class JsonDB:
                 "name": name,
                 "above": above,
                 "below": below,
-                "price": float(price),
+                "ltp": float(price),
                 "actions": [],
             }
         )

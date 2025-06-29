@@ -6,6 +6,7 @@ from jinja_template import jt
 import inspect
 from api_helper import pages
 from constants import alerts_json
+from logzero import logger as logging
 
 router = APIRouter()
 
@@ -41,7 +42,8 @@ async def add_alert(
     price: str = Form(...),
     db: JsonDB = Depends(get_jsondb),
 ):
-    new_alert = db.add_alert(name, above, below, price)
+    _ = db.add_alert(name, above, below, price)
+    logging.debug(f"alert price  {price}")
     return RedirectResponse("/alerts", status_code=302)
 
 
