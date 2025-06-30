@@ -11,14 +11,15 @@ from logzero import logger as logging
 from typing import Any
 from toolkit.telegram import Telegram
 from toolkit.kokoo import is_time_past
+from math import ceil
 
 
 def convert_price(price: float):
-    buff = price * 2 / 100
-    price = price + buff
-    price = price / 100
-    price = round(price / 0.05) * 0.05
-    return str(price)
+    tick_size = 0.05
+    result = ceil(price / tick_size) * tick_size
+    if result == price:
+        result = price + tick_size
+    return f"{result:.2f}"
 
 
 def split(tradingsymbol_to_be_split):
