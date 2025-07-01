@@ -92,7 +92,7 @@ class Monitor:
                 ask = f"ask: {dct['ask']} min of buy prices {buy_prices}"
                 bid = f"bid: {dct['bid']} max of sel prices {sell_prices}"
                 msg = f"{tradingsymbol} \n {ask} \n {bid}"
-                logging.debug(msg)
+                logging.info(msg)
                 flattened_ticks.append(dct)
 
             for ticks in flattened_ticks:
